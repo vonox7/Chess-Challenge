@@ -32,7 +32,7 @@ public class MyBot : IChessBot
             board.UndoMove(move);
         }
 
-        //Log($"--> {bestMove.MovePieceType} {bestMove}: {bestScore}");
+        //Log($"--> {bestMove.MovePieceType} {bestMove}: {Math.Round(bestScore)}");
         return bestMove;
     }
 
@@ -46,7 +46,7 @@ public class MyBot : IChessBot
         
         var score = 0.0;
 
-        var kingSquare = board.GetKingSquare(white);
+        //var kingSquare = board.GetKingSquare(white);
         
         foreach (var pieceList in board.GetAllPieceLists())
         {
@@ -60,51 +60,30 @@ public class MyBot : IChessBot
                     // Make pawns move forward
                     var rank = piece.Square.Rank;
                     var ranksAwayFromPromotion = white ? rank : 7 - rank;
-                    score += ranksAwayFromPromotion * ranksAwayFromPromotion; // TODO square?
-                    
-                    // King wants to have 3 pawns infront of him
-                    // (5 = as long as game is not progressed a lot)
-                    // But only if king has moved away from start position (and has not moved to center)
-                    if (pieceList.Count >= 5 && kingSquare.File != 3 && kingSquare.File != 4)
-                    {
-                        if (piece.Square.Rank == kingSquare.Rank + (white ? 1 : -1) &&
-                            Math.Abs(piece.Square.File - kingSquare.File) < 2)
-                        {
-                            score += 10; // TODO how much score?
-                        }
-                    }
+                    score += 3 * ranksAwayFromPromotion;
                 }
                 
-                // TODO blockers:0 vs board --> actually attacking ones vs pinned
                 var attacks = BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
                 
                 // Move pieces to places with much freedom TODO up to how much freedom is it relevant?
                 // TODO freedom is more important, should lead to moving pawn forward after castling
                 // TODO weight bei how "relevant" is attacking/protecting piece
-                score += 5 * BitboardHelper.GetNumberOfSetBits(attacks);
+                //score += 2 * BitboardHelper.GetNumberOfSetBits(attacks);
                 
-                // Make pieces protect other pieces AND Make pieces attacking other pieces. (TODO: same score? which score?)
-                // This includes pinning.
+                // TODO Make pieces protect other pieces 
+                // TODO Pinning
+                
+                // Make pieces attacking other pieces
                 score += 1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard);
             }
         }
 
-        // Allow early castle
-        // TODO how long? which score? degressive based on PlyCount? same score?
-        if (board.PlyCount < 30)
-        {
-            score += board.HasKingsideCastleRight(white) ? 10 : 0;
-            score += board.HasQueensideCastleRight(white) ? 10 : 0;
-            if (kingSquare.File != 4 && kingSquare.Rank == (white ? 0 : 7))
-            {
-                score += 40; // King has castled, we like this (we must like this more than 2 castle rights combined)
-            }
-        }
+        // TODO favour early castle & castle rights
         
-        // Putting someone in check is quite often good TODO but how good?
+        // Putting someone in check is quite often good
         if (board.IsInCheck())
         {
-            score += board.IsWhiteToMove == white ? -50 : 50;
+            score += board.IsWhiteToMove == white ? 70 : -70;
         }
         
         return score; // 13900 = everything
