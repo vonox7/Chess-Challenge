@@ -2,38 +2,80 @@
 using System.Linq;
 using System.Security.Cryptography;
 using ChessChallenge.API;
+using ChessChallenge.Chess;
+using Microsoft.CodeAnalysis;
 using static ChessChallenge.Application.ConsoleHelper;
+using Board = ChessChallenge.API.Board;
+using Move = ChessChallenge.API.Move;
 
 public class MyBot : IChessBot
 {
+    Board board;
+    Timer timer;
+    private Move bestMove;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
     
-    public Move Think(Board board, Timer timer)
+    public Move Think(Board _board, Timer _timer)
     {
-        Move[] moves = board.GetLegalMoves(); // TODO: non-alloc
-        Random rng = new();
-        var whiteToMove = board.IsWhiteToMove;
+        board = _board;
+        timer = _timer;
+        bestMove = Move.NullMove; // TODO FIXME is sometimes still null after minimax?
+        // TODO sort for ab-pruning: "Check - Capture - Attack": bestMove.IsPromotion; bestMove.IsCapture; bestMove.IsCastles; attack(make move; check if attack & ~currentAttack count > 0)
+        // TODO run those "good" branches +2 depth
+        
+        minimax(3, board.IsWhiteToMove, true);
+        
+        // TODO: non-alloc
 
-        var bestMove = moves[0];
-        var bestScore = whiteToMove ? -100000.0 : 100000.0;
+        return bestMove;
+    }
 
-        foreach (var move in moves)
+    double minimax(int depth, bool whiteToMinimize, bool assignBestMove)
+    {
+        if (depth == 0 || board.IsInCheckmate() || board.IsDraw()) // TODO 3 cases different?
         {
-            board.MakeMove(move);
-            var score = evaluate(board, true) - evaluate(board, false);
-            //Log($"    {move.MovePieceType} {move}: {score}");
-            // Add small random, so we get less often stalemate
-            score += rng.NextDouble() / 1000.0;
-            if (whiteToMove ? score > bestScore : score < bestScore)
-            {
-                bestScore = score;
-                bestMove = move;
-            }
-            board.UndoMove(move);
+            return evaluate();
         }
 
-        //Log($"--> {bestMove.MovePieceType} {bestMove}: {Math.Round(bestScore)}");
-        return bestMove;
+        if (whiteToMinimize)
+        {
+            var maxEval = -1000000000.0; // TODO extract function for both cases to spare code?
+            foreach (var move in board.GetLegalMoves())
+            {
+                board.MakeMove(move);
+                var eval = minimax(depth - 1, false, false);
+                board.UndoMove(move);
+                if (eval > maxEval)
+                {
+                    maxEval = eval;
+                    if (assignBestMove) bestMove = move;
+                }
+            }
+
+            return maxEval;
+        }
+        else
+        {
+            var minEval = 1000000000.0;
+            foreach (var move in board.GetLegalMoves())
+            {
+                board.MakeMove(move);
+                var eval = minimax(depth - 1, true, false);
+                board.UndoMove(move);
+                if (eval < minEval)
+                {
+                    minEval = eval;
+                    if (assignBestMove) bestMove = move;
+                }
+            }
+
+            return minEval;
+        }
+    }
+
+    double evaluate()
+    {
+        return evaluate(board, true) - evaluate(board, false);
     }
 
     double evaluate(Board board, bool white)
@@ -45,8 +87,6 @@ public class MyBot : IChessBot
         }
         
         var score = 0.0;
-
-        //var kingSquare = board.GetKingSquare(white);
         
         foreach (var pieceList in board.GetAllPieceLists())
         {
@@ -62,8 +102,25 @@ public class MyBot : IChessBot
                     var ranksAwayFromPromotion = white ? rank : 7 - rank;
                     score += 3 * ranksAwayFromPromotion;
                 }
-                
+
                 var attacks = BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
+
+                /*if (piece.IsKing/* && board.PlyCount > 20  * /)
+                {
+                    // King safety is very important (after move 10?)
+                    var kingAttacksAfterOneMove = attacks & ~board.AllPiecesBitboard;
+                    var kingAttackIteration = kingAttacksAfterOneMove;
+                    while (kingAttackIteration != 0)
+                    {
+                        var squareIndex = BitboardHelper.ClearAndGetIndexOfLSB(ref kingAttackIteration);
+                        kingAttacksAfterOneMove |= BitboardHelper.GetKingAttacks(new Square(squareIndex)) & ~board.AllPiecesBitboard;
+                    }
+                    var add = Math.Max(board.PlyCount - 10, 0) *
+                             Math.Min(BitboardHelper.GetNumberOfSetBits(kingAttacksAfterOneMove), 2); // 4 = save enough TODO
+                    score += add;
+                    // TODO remove the places that are under attack by opponent?
+                }*/
+                
                 
                 // Move pieces to places with much freedom TODO up to how much freedom is it relevant?
                 // TODO freedom is more important, should lead to moving pawn forward after castling
@@ -73,7 +130,7 @@ public class MyBot : IChessBot
                 // TODO Make pieces protect other pieces 
                 // TODO Pinning
                 
-                // Make pieces attacking other pieces
+                // Make pieces attacking/defending other pieces TODO same score for attack+defense?
                 score += 1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard);
             }
         }

@@ -27,6 +27,8 @@ namespace ChessChallenge.Application
             }
             if (NextButtonInRow("MyBot vs EvilBot", ref buttonPos, spacing, buttonSize))
             {
+                controller.fastForward = true;
+                Settings.RunBotsOnSeparateThread = false;
                 controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.EvilBot);
             }
 
