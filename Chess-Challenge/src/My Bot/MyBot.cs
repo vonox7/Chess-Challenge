@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Security.Cryptography;
 using ChessChallenge.API;
@@ -20,8 +21,6 @@ public class MyBot : IChessBot
         board = _board;
         timer = _timer;
         bestMove = Move.NullMove; // TODO FIXME is sometimes still null after minimax?
-        // TODO sort for ab-pruning: "Check - Capture - Attack": bestMove.IsPromotion; bestMove.IsCapture; bestMove.IsCastles; attack(make move; check if attack & ~currentAttack count > 0)
-        // TODO run those "good" branches +2 depth
 
         minimax(4, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
 
@@ -35,6 +34,12 @@ public class MyBot : IChessBot
         return bestMove;
     }
 
+    bool isHighPotentialMove(Move move)
+    {
+        // TODO check also for check - at least after 10 plys because then we are faster?
+        return move.IsCapture || move.IsPromotion || move.IsCastles;
+    }
+    
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
     {
         if (depth == 0 || board.IsInCheckmate() || board.IsDraw()) // TODO 3 cases different?
@@ -45,7 +50,14 @@ public class MyBot : IChessBot
         if (whiteToMinimize)
         {
             var maxEval = -1000000000.0; // TODO extract function for both cases to spare code?
-            foreach (var move in board.GetLegalMoves())
+            var moves = board.GetLegalMoves();
+            
+            // Optimize ab-pruning: first check moves that are more likely to be good
+            moves = moves.Where(move => isHighPotentialMove(move))
+                .Concat(moves.Where(move => !isHighPotentialMove(move)))
+                .ToArray();
+            
+            foreach (var move in moves)
             {
                 board.MakeMove(move);
                 var eval = minimax(depth - 1, false, alpha, beta, false);
