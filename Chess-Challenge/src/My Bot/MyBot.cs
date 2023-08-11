@@ -15,15 +15,27 @@ public class MyBot : IChessBot
     Timer timer;
     private Move bestMove;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
+    int maxExpectedMoveDuration;
 
     public Move Think(Board _board, Timer _timer)
     {
         board = _board;
         timer = _timer;
         bestMove = Move.NullMove;
+        maxExpectedMoveDuration = 10000000;
+
+        // Time control
+        var depth = 8;
+        var pieceCountSquare = (BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard) + 2) * (BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) + 2);
+        while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 - 200 && depth > 3)
+        {
+            depth--;
+            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.5) / 10);
+        }
         
-        minimax(4, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-        // TODO: non-alloc
+        // Search
+        minimax(depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
+        //Console.WriteLine($"pieceCountSquare={pieceCountSquare}, depth={depth}, maxExpectedMoveDuration={maxExpectedMoveDuration}, actual={timer.MillisecondsElapsedThisTurn},\tovershoot={Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration)}");
 
         return bestMove;
     }
@@ -36,7 +48,7 @@ public class MyBot : IChessBot
     
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
     {
-        var moves = board.GetLegalMoves();
+        var moves = board.GetLegalMoves(); // TODO: non-alloc
         
         if (depth == 0 || board.IsInCheckmate() || board.IsDraw() || (moves.Length == 1 && assignBestMove)) // TODO 3 cases different?
         {
@@ -123,7 +135,7 @@ public class MyBot : IChessBot
                     // Make pawns move forward
                     var rank = piece.Square.Rank;
                     var ranksAwayFromPromotion = white ? rank : 7 - rank;
-                    score += 3 * ranksAwayFromPromotion; // TODO max 2 pawn away from promotion, more does only very little impact
+                    score += ranksAwayFromPromotion;
                 } // TODO endgame evaluation: king in center vs side/top/bottom (or near other pieces, no matter of color): board weight + 1 center-weight
 
                 var attacks =
@@ -150,6 +162,6 @@ public class MyBot : IChessBot
             score += board.IsWhiteToMove == white ? 70 : -70;
         }
 
-        return score; // 13900 = everything
+        return score;
     }
 }
