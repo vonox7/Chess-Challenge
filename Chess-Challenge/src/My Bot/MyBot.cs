@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Numerics;
@@ -109,10 +110,10 @@ public class MyBot : IChessBot
 
     double evaluate()
     {
-        return evaluate(board, true) - evaluate(board, false);
+        return evaluate(true) - evaluate(false); // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
     }
 
-    double evaluate(Board board, bool white)
+    double evaluate(bool white)
     {
         // Checkmate is of course always best
         if (board.IsInCheckmate())
@@ -120,7 +121,7 @@ public class MyBot : IChessBot
             return board.IsWhiteToMove == white ? -100000000.0 : 100000000.0;
         }
 
-        if (this.board.IsDraw())
+        if (board.IsDraw())
         {
             return 0;
         }
@@ -130,8 +131,9 @@ public class MyBot : IChessBot
         foreach (var pieceList in board.GetAllPieceLists())
         {
             if (white != pieceList.IsWhitePieceList) continue;
-            foreach (var piece in pieceList)
+            for (int pieceIndex = 0; pieceIndex < pieceList.Count; pieceIndex++)
             {
+                var piece = pieceList[pieceIndex];
                 score += pieceValues[(int)piece.PieceType];
 
                 if (piece.IsPawn)
