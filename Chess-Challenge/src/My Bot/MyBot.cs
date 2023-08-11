@@ -46,17 +46,17 @@ public class MyBot : IChessBot
         {
             return evaluate();
         }
+        
+        var moves = board.GetLegalMoves();
+            
+        // Optimize ab-pruning: first check moves that are more likely to be good
+        moves = moves.Where(move => isHighPotentialMove(move))
+            .Concat(moves.Where(move => !isHighPotentialMove(move)))
+            .ToArray();
 
         if (whiteToMinimize)
         {
             var maxEval = -1000000000.0; // TODO extract function for both cases to spare code?
-            var moves = board.GetLegalMoves();
-            
-            // Optimize ab-pruning: first check moves that are more likely to be good
-            moves = moves.Where(move => isHighPotentialMove(move))
-                .Concat(moves.Where(move => !isHighPotentialMove(move)))
-                .ToArray();
-            
             foreach (var move in moves)
             {
                 board.MakeMove(move);
@@ -77,7 +77,7 @@ public class MyBot : IChessBot
         else
         {
             var minEval = 1000000000.0;
-            foreach (var move in board.GetLegalMoves())
+            foreach (var move in moves)
             {
                 board.MakeMove(move);
                 var eval = minimax(depth - 1, true, alpha, beta, false);
@@ -106,7 +106,7 @@ public class MyBot : IChessBot
         // Checkmate is of course always best
         if (board.IsInCheckmate())
         {
-            return board.IsWhiteToMove == white ? Double.MinValue : Double.MaxValue;
+            return board.IsWhiteToMove == white ? -1000000000.0 : 1000000000.0;
         }
 
         var score = 0.0;
