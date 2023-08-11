@@ -42,12 +42,13 @@ public class MyBot : IChessBot
     
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
     {
-        if (depth == 0 || board.IsInCheckmate() || board.IsDraw()) // TODO 3 cases different?
-        {
-            return evaluate();
-        }
-        
         var moves = board.GetLegalMoves();
+        
+        if (depth == 0 || board.IsInCheckmate() || board.IsDraw() || (moves.Length == 1 && assignBestMove)) // TODO 3 cases different?
+        {
+            if (assignBestMove) bestMove = moves.First();
+            return evaluate(); // Reminder: Don't cache if moves.Length == 1 && assignBestMove, this is just a shortcut
+        }
             
         // Optimize ab-pruning: first check moves that are more likely to be good
         moves = moves.Where(move => isHighPotentialMove(move))
@@ -106,7 +107,7 @@ public class MyBot : IChessBot
         // Checkmate is of course always best
         if (board.IsInCheckmate())
         {
-            return board.IsWhiteToMove == white ? -1000000000.0 : 1000000000.0;
+            return board.IsWhiteToMove == white ? -100000000.0 : 100000000.0;
         }
 
         if (this.board.IsDraw())
