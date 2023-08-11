@@ -109,6 +109,11 @@ public class MyBot : IChessBot
             return board.IsWhiteToMove == white ? -1000000000.0 : 1000000000.0;
         }
 
+        if (this.board.IsDraw())
+        {
+            return 0;
+        }
+
         var score = 0.0;
 
         foreach (var pieceList in board.GetAllPieceLists())
