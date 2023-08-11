@@ -20,15 +20,9 @@ public class MyBot : IChessBot
     {
         board = _board;
         timer = _timer;
-        bestMove = Move.NullMove; // TODO FIXME is sometimes still null after minimax?
-
+        bestMove = Move.NullMove;
+        
         minimax(4, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-
-        if (bestMove == Move.NullMove)
-        {
-            bestMove = board.GetLegalMoves().First();
-        }
-
         // TODO: non-alloc
 
         return bestMove;
@@ -129,7 +123,7 @@ public class MyBot : IChessBot
                     // Make pawns move forward
                     var rank = piece.Square.Rank;
                     var ranksAwayFromPromotion = white ? rank : 7 - rank;
-                    score += 3 * ranksAwayFromPromotion;
+                    score += 3 * ranksAwayFromPromotion; // TODO max 2 pawn away from promotion, more does only very little impact
                 } // TODO endgame evaluation: king in center vs side/top/bottom (or near other pieces, no matter of color): board weight + 1 center-weight
 
                 var attacks =
