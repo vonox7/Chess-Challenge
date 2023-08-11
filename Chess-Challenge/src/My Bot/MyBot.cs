@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Numerics;
 using System.Security.Cryptography;
 using ChessChallenge.API;
 using ChessChallenge.Chess;
@@ -26,6 +27,7 @@ public class MyBot : IChessBot
 
         // Time control
         var depth = 8;
+        // Add 2, as king has a lot of movements and king always is on the board
         var pieceCountSquare = (BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard) + 2) * (BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) + 2);
         while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 - 200 && depth > 3)
         {
@@ -35,15 +37,17 @@ public class MyBot : IChessBot
         
         // Search
         minimax(depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-        //Console.WriteLine($"pieceCountSquare={pieceCountSquare}, depth={depth}, maxExpectedMoveDuration={maxExpectedMoveDuration}, actual={timer.MillisecondsElapsedThisTurn},\tovershoot={Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration)}");
+        //Console.WriteLine($"pieces={pieceCountSquare}, depth={depth}, expected={maxExpectedMoveDuration}, actual={timer.MillisecondsElapsedThisTurn},\tovershoot={Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration)}");
 
         return bestMove;
     }
 
     bool isHighPotentialMove(Move move)
     {
-        // TODO check also for check - at least after 10 plys because then we are faster?
-        return move.IsCapture || move.IsPromotion || move.IsCastles;
+        board.MakeMove(move);
+        var isInCheck = board.IsInCheck();
+        board.UndoMove(move);
+        return move.IsCapture || move.IsPromotion || move.IsCastles || isInCheck;
     }
     
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
@@ -63,7 +67,7 @@ public class MyBot : IChessBot
 
         if (whiteToMinimize)
         {
-            var maxEval = -1000000000.0; // TODO extract function for both cases to spare code?
+            var maxEval = Double.NegativeInfinity; // TODO extract function for both cases to spare code?
             foreach (var move in moves)
             {
                 board.MakeMove(move);
@@ -83,7 +87,7 @@ public class MyBot : IChessBot
         }
         else
         {
-            var minEval = 1000000000.0;
+            var minEval = Double.PositiveInfinity;
             foreach (var move in moves)
             {
                 board.MakeMove(move);
