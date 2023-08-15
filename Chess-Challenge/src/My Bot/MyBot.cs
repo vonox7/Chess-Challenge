@@ -17,6 +17,7 @@ public class MyBot : IChessBot
     Timer timer;
     private Move bestMove;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
+    private int[] backRankPieceNegativeScore = { 0, 0, -30, -25, 0, -20, 0 };
     int maxExpectedMoveDuration;
 
     public Move Think(Board _board, Timer _timer)
@@ -144,6 +145,11 @@ public class MyBot : IChessBot
                     score += ranksAwayFromPromotion;
                 } // TODO endgame evaluation: king in center vs side/top/bottom (or near other pieces, no matter of color): board weight + 1 center-weight
 
+                if (piece.Square.Rank == (white ? 0 : 7))
+                {
+                    score += backRankPieceNegativeScore[(int)piece.PieceType];
+                }
+                
                 var attacks =
                     BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
 
