@@ -1,13 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Numerics;
-using System.Security.Cryptography;
 using ChessChallenge.API;
-using ChessChallenge.Chess;
-using Microsoft.CodeAnalysis;
-using static ChessChallenge.Application.ConsoleHelper;
 using Board = ChessChallenge.API.Board;
 using Move = ChessChallenge.API.Move;
 
@@ -156,7 +149,7 @@ public class MyBot : IChessBot
                 // Move pieces to places with much freedom TODO up to how much freedom is it relevant? bishop < 2 freedom = trapped = very bad
                 // TODO freedom is more important, should lead to moving pawn forward after castling
                 // TODO weight bei how "relevant" is attacking/protecting piece
-                //score += 2 * BitboardHelper.GetNumberOfSetBits(attacks);
+                score += 0.5 * BitboardHelper.GetNumberOfSetBits(attacks);
 
                 // TODO Make pieces protect other pieces 
                 // TODO Pinning
