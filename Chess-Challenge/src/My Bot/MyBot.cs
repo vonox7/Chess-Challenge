@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Linq;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using ChessChallenge.API;
 using Board = ChessChallenge.API.Board;
 using Move = ChessChallenge.API.Move;
@@ -9,9 +11,11 @@ public class MyBot : IChessBot
     Board board;
     Timer timer;
     private Move bestMove;
+    private double bestMoveEval;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
     private int[] backRankPieceNegativeScore = { 0, 0, -30, -25, 0, -20, 0 };
     int maxExpectedMoveDuration;
+    private double[] overshootFactor = { 1, 1, 1, 1 };
 
     public Move Think(Board _board, Timer _timer)
     {
@@ -22,17 +26,20 @@ public class MyBot : IChessBot
 
         // Time control
         var depth = 8;
-        // Add 2, as king has a lot of movements and king always is on the board
-        var pieceCountSquare = (BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard) + 2) * (BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) + 2);
+        var pieceCount = BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard);
+        var averageOvershootFactor = overshootFactor.Sum() / 4;
         while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 - 200 && depth > 3)
         {
             depth--;
-            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.5) / 10);
+            // "/ 100" matches roughly my local machine in release mode and https://github.com/SebLague/Chess-Challenge/issues/381. Local debug mode would be about "/ 10".
+            // Dynamic time control with averageOvershootFactor solves the problem of having different hardware
+            maxExpectedMoveDuration = (int) (Math.Pow(pieceCount * pieceCount, (depth - 2) / 1.5) / 100 * averageOvershootFactor);
         }
         
         // Search
         minimax(depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-        //Console.WriteLine($"pieces={pieceCountSquare}, depth={depth}, expected={maxExpectedMoveDuration}, actual={timer.MillisecondsElapsedThisTurn},\tovershoot={Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration)}");
+        overshootFactor[board.PlyCount / 2 % 4] = (double) (timer.MillisecondsElapsedThisTurn + 5) / (maxExpectedMoveDuration + 5); // Add 5ms to avoid 0ms rounds/predictions impacting too much
+        //Console.WriteLine($"bestMoveEval={Math.Round(bestMoveEval)}, depth={depth}, expectedMs={maxExpectedMoveDuration}, actualMs={timer.MillisecondsElapsedThisTurn}, overshootMs={Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration)}, averageOvershootFactor={Math.Round(averageOvershootFactor, 2)}"); // #DEBUG
 
         return bestMove;
     }
@@ -51,7 +58,11 @@ public class MyBot : IChessBot
         
         if (depth == 0 || board.IsInCheckmate() || board.IsDraw() || (moves.Length == 1 && assignBestMove)) // TODO 3 cases different?
         {
-            if (assignBestMove) bestMove = moves.First();
+            if (assignBestMove)
+            {
+                bestMoveEval = evaluate();
+                bestMove = moves.First();
+            }
             return evaluate(); // Reminder: Don't cache if moves.Length == 1 && assignBestMove, this is just a shortcut
         }
             
@@ -72,7 +83,11 @@ public class MyBot : IChessBot
                 if (eval > maxEval)
                 {
                     maxEval = eval;
-                    if (assignBestMove) bestMove = move;
+                    if (assignBestMove)
+                    {
+                        bestMove = move;
+                        bestMoveEval = eval;
+                    }
                 }
 
                 if (beta <= alpha) break;
@@ -92,7 +107,11 @@ public class MyBot : IChessBot
                 if (eval < minEval)
                 {
                     minEval = eval;
-                    if (assignBestMove) bestMove = move;
+                    if (assignBestMove)
+                    {
+                        bestMove = move;
+                        bestMoveEval = eval;
+                    }
                 }
 
                 if (beta <= alpha) break;
