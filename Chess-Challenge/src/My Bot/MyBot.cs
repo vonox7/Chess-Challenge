@@ -131,7 +131,8 @@ public class MyBot : IChessBot
         // Checkmate is of course always best
         if (board.IsInCheckmate())
         {
-            return board.IsWhiteToMove == white ? -100000000.0 : 100000000.0;
+            // Add/Subtract plyCount to prefer mate in fewer moves
+            return board.IsWhiteToMove == white ? -100000000.0 + board.PlyCount : 100000000.0 - board.PlyCount;
         }
 
         if (board.IsDraw())
