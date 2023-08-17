@@ -44,12 +44,13 @@ public class MyBot : IChessBot
         return bestMove;
     }
 
-    bool isHighPotentialMove(Move move)
+    int getMovePotential(Move move)
     {
+        // TODO check transposition table for previously good moves
         board.MakeMove(move);
         var isInCheck = board.IsInCheck();
         board.UndoMove(move);
-        return move.IsCapture || move.IsPromotion || move.IsCastles || isInCheck;
+        return move.IsCapture || move.IsPromotion || move.IsCastles || isInCheck ? -100 : 0;
     }
     
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
@@ -72,7 +73,7 @@ public class MyBot : IChessBot
         int moveIndex = 0;
         foreach (var move in moves)
         {
-            movePotential[moveIndex++] = isHighPotentialMove(move) ? -1 : 0;
+            movePotential[moveIndex++] = getMovePotential(move);
         }
         movePotential.Sort(moves);
 
