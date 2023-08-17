@@ -54,22 +54,27 @@ public class MyBot : IChessBot
     
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
     {
-        var moves = board.GetLegalMoves(); // TODO: non-alloc
+        Span<Move> moves = stackalloc Move[256];
+        board.GetLegalMovesNonAlloc(ref moves);
         
         if (depth == 0 || board.IsInCheckmate() || board.IsDraw() || (moves.Length == 1 && assignBestMove)) // TODO 3 cases different?
         {
             if (assignBestMove)
             {
                 bestMoveEval = evaluate();
-                bestMove = moves.First();
+                bestMove = moves[0];
             }
             return evaluate(); // Reminder: Don't cache if moves.Length == 1 && assignBestMove, this is just a shortcut
         }
             
         // Optimize ab-pruning: first check moves that are more likely to be good
-        moves = moves.Where(move => isHighPotentialMove(move))
-            .Concat(moves.Where(move => !isHighPotentialMove(move)))
-            .ToArray();
+        Span<int> movePotential = stackalloc int[moves.Length];
+        int moveIndex = 0;
+        foreach (var move in moves)
+        {
+            movePotential[moveIndex++] = isHighPotentialMove(move) ? -1 : 0;
+        }
+        movePotential.Sort(moves);
 
         if (whiteToMinimize)
         {
