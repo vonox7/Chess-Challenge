@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Linq;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 using ChessChallenge.API;
-using Board = ChessChallenge.API.Board;
-using Move = ChessChallenge.API.Move;
 
 public class MyBot : IChessBot
 {
@@ -16,6 +12,7 @@ public class MyBot : IChessBot
     private int[] backRankPieceNegativeScore = { 0, 0, -30, -25, 0, -20, 0 };
     int maxExpectedMoveDuration;
     private double[] overshootFactor = { 1, 1, 1, 1 };
+    Move[,] killerMoves = new Move[1000, 2]; // Lets hope that we never have more than 1000 moves in a game
 
     public Move Think(Board _board, Timer _timer)
     {
@@ -46,11 +43,21 @@ public class MyBot : IChessBot
 
     int getMovePotential(Move move)
     {
+        var guess = 0;
+        
+        if (move == killerMoves[board.PlyCount, 0] || move == killerMoves[board.PlyCount, 1]) guess -= 50; // TODO how much?
+
         // TODO check transposition table for previously good moves
         board.MakeMove(move);
-        var isInCheck = board.IsInCheck();
+        var isInCheck = board.IsInCheck(); // TODO check + capture/promo/castles --> even better (?)
         board.UndoMove(move);
-        return move.IsCapture || move.IsPromotion || move.IsCastles || isInCheck ? -100 : 0;
+        if (move.IsCapture || move.IsPromotion || move.IsCastles || isInCheck)
+        {
+            // TODO https://www.chessprogramming.org/MVV-LVA: guess -= 100 * (int)move.CapturePieceType - (int)move.MovePieceType;
+            guess -= 100;
+        }
+
+        return guess;
     }
     
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
@@ -59,7 +66,9 @@ public class MyBot : IChessBot
         {
             return evaluate();
         }
-        
+
+        var ply = board.PlyCount;
+
         Span<Move> moves = stackalloc Move[256];
         board.GetLegalMovesNonAlloc(ref moves);
 
@@ -99,7 +108,15 @@ public class MyBot : IChessBot
                     }
                 }
 
-                if (beta <= alpha) break;
+                if (beta <= alpha)
+                {
+                    if (!move.IsCapture) // TODO also all other moves that had != 0 expectation
+                    {
+                        killerMoves[ply, 1] = killerMoves[ply, 0];
+                        killerMoves[ply, 0] = move;
+                    }
+                    break;
+                }
             }
 
             return maxEval;
@@ -123,7 +140,15 @@ public class MyBot : IChessBot
                     }
                 }
 
-                if (beta <= alpha) break;
+                if (beta <= alpha)
+                {
+                    if (!move.IsCapture) // TODO also all other moves that had != 0 expectation
+                    {
+                        killerMoves[ply, 1] = killerMoves[ply, 0];
+                        killerMoves[ply, 0] = move;
+                    }
+                    break;
+                }
             }
 
             return minEval;
