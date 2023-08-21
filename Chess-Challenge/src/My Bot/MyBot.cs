@@ -55,17 +55,20 @@ public class MyBot : IChessBot
     
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
     {
+        if (depth == 0 || board.IsInCheckmate() || board.IsDraw()) // TODO 3 cases different?
+        {
+            return evaluate();
+        }
+        
         Span<Move> moves = stackalloc Move[256];
         board.GetLegalMovesNonAlloc(ref moves);
-        
-        if (depth == 0 || board.IsInCheckmate() || board.IsDraw() || (moves.Length == 1 && assignBestMove)) // TODO 3 cases different?
+
+        // Shortcut for when there is only one move available (only keep it when we have tokens left).
+        // If we implement any caching, don't cache this case, because it is not a real evaluation.
+        if (moves.Length == 1 && assignBestMove)
         {
-            if (assignBestMove)
-            {
-                bestMoveEval = evaluate();
-                bestMove = moves[0];
-            }
-            return evaluate(); // Reminder: Don't cache if moves.Length == 1 && assignBestMove, this is just a shortcut
+            bestMoveEval = evaluate();
+            bestMove = moves[0];
         }
             
         // Optimize ab-pruning: first check moves that are more likely to be good
