@@ -110,7 +110,8 @@ public class MyBot : IChessBot
 
                 if (beta <= alpha)
                 {
-                    if (!move.IsCapture) // TODO also all other moves that had != 0 expectation
+                    // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
+                    if (!move.IsCapture)
                     {
                         killerMoves[ply, 1] = killerMoves[ply, 0];
                         killerMoves[ply, 0] = move;
@@ -142,7 +143,8 @@ public class MyBot : IChessBot
 
                 if (beta <= alpha)
                 {
-                    if (!move.IsCapture) // TODO also all other moves that had != 0 expectation
+                    // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
+                    if (!move.IsCapture)
                     {
                         killerMoves[ply, 1] = killerMoves[ply, 0];
                         killerMoves[ply, 0] = move;

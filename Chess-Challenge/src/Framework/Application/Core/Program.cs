@@ -1,7 +1,7 @@
-﻿using Raylib_cs;
-using System.IO;
+﻿using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Raylib_cs;
 
 namespace ChessChallenge.Application
 {
@@ -133,3 +133,5 @@ But do not bring out queen early, even if it would have more movement
 Attacks on pieces/pawns near the king are more worth
 Store good lines, opponent probably plays one of them, then we already can start digging deeper
  */
+// TODO https://en.wikipedia.org/wiki/Quiescence_search (search only capture after some depth)
+// TODO https://www.chessprogramming.org/Delta_Pruning (safety margin)
