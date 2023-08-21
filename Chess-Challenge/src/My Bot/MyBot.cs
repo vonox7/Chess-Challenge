@@ -13,6 +13,13 @@ public class MyBot : IChessBot
     int maxExpectedMoveDuration;
     private double[] overshootFactor = { 1, 1, 1, 1 };
     Move[,] killerMoves = new Move[1000, 2]; // Lets hope that we never have more than 1000 moves in a game
+    private Transposition[] transpositions = new Transposition[100000];
+    class Transposition
+    {
+        public ulong zobristKey;
+        public Move bestMove; // TODO figure out if caching bestMove actually does something
+        // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
+    }
 
     public Move Think(Board _board, Timer _timer)
     {
@@ -43,8 +50,11 @@ public class MyBot : IChessBot
 
     int getMovePotential(Move move)
     {
-        // TODO figure out if -10/-1/-3/-1/-5 (and no scaling on capture-movePieceType) is a good guess
+        // TODO figure out if 1000/-10/-1/-3/-1/-5 (and no scaling on capture-movePieceType) is a good guess
         var guess = 0;
+
+        var transposition = transpositions[board.ZobristKey % 100000];
+        if (transposition.zobristKey == board.ZobristKey && move == transposition.bestMove) guess += 1000;
         
         // TODO check transposition table for previously good moves
         if (move == killerMoves[board.PlyCount, 0] || move == killerMoves[board.PlyCount, 1]) guess -= 10;
@@ -100,6 +110,10 @@ public class MyBot : IChessBot
                 alpha = Math.Max(alpha, eval);
                 if (eval > maxEval)
                 {
+                    var transposition = transpositions[board.ZobristKey % 100000];
+                    transposition.zobristKey = board.ZobristKey;
+                    transposition.bestMove = move;
+                    
                     maxEval = eval;
                     if (assignBestMove)
                     {
@@ -133,6 +147,10 @@ public class MyBot : IChessBot
                 beta = Math.Min(beta, eval);
                 if (eval < minEval)
                 {
+                    var transposition = transpositions[board.ZobristKey % 100000];
+                    transposition.zobristKey = board.ZobristKey;
+                    transposition.bestMove = move;
+                    
                     minEval = eval;
                     if (assignBestMove)
                     {
@@ -224,5 +242,14 @@ public class MyBot : IChessBot
         }
 
         return score;
+    }
+    
+    // constructor
+    public MyBot()
+    {
+        for (int i = 0; i < 100000; i++)
+        { // TODO struct (new every time) vs class (new here on the constructor)
+            transpositions[i] = new Transposition();
+        }
     }
 }
