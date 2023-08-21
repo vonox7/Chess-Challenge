@@ -179,6 +179,7 @@ public class MyBot : IChessBot
         }
     }
 
+    // TODO why are we making 1-move blunders in valibot-0.7? https://chess.stjo.dev/game/410390/
     double evaluate()
     {
         // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
