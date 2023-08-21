@@ -43,19 +43,19 @@ public class MyBot : IChessBot
 
     int getMovePotential(Move move)
     {
+        // TODO figure out if -10/-1/-3/-1/-5 (and no scaling on capture-movePieceType) is a good guess
         var guess = 0;
         
-        if (move == killerMoves[board.PlyCount, 0] || move == killerMoves[board.PlyCount, 1]) guess -= 50; // TODO how much?
-
         // TODO check transposition table for previously good moves
+        if (move == killerMoves[board.PlyCount, 0] || move == killerMoves[board.PlyCount, 1]) guess -= 10;
+
         board.MakeMove(move);
-        var isInCheck = board.IsInCheck(); // TODO check + capture/promo/castles --> even better (?)
+        if (board.IsInCheck()) guess -= 1;
         board.UndoMove(move);
-        if (move.IsCapture || move.IsPromotion || move.IsCastles || isInCheck)
-        {
-            // TODO https://www.chessprogramming.org/MVV-LVA: guess -= 100 * (int)move.CapturePieceType - (int)move.MovePieceType;
-            guess -= 100;
-        }
+
+        if (move.IsPromotion) guess -= 3;
+        if (move.IsCastles) guess -= 1;
+        if (move.IsCapture) guess -= (int)move.CapturePieceType - (int)move.MovePieceType + 5;
 
         return guess;
     }
