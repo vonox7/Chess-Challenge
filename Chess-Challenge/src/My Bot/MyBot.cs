@@ -90,7 +90,7 @@ public class MyBot : IChessBot
             bestMove = moves[0];
         }
             
-        // Optimize ab-pruning: first check moves that are more likely to be good
+        // Optimize via ab-pruning: first check moves that are more likely to be good
         Span<int> movePotential = stackalloc int[moves.Length];
         int moveIndex = 0;
         foreach (var move in moves)
@@ -222,6 +222,7 @@ public class MyBot : IChessBot
             for (int pieceIndex = 0; pieceIndex < pieceList.Count; pieceIndex++)
             {
                 var piece = pieceList[pieceIndex];
+                // TODO wtf, we once promoted to a bishop?!? fix this
                 score += pieceValues[(int)piece.PieceType];
 
                 if (piece.IsPawn)
