@@ -177,7 +177,27 @@ public class MyBot : IChessBot
 
     double evaluate()
     {
-        return evaluate(true) - evaluate(false); // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
+        // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
+        var whitePieceCount = BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard); 
+        var blackPieceCount = BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard);
+        // endgameScaling is 1 when we have 1 piece left (so only king), 0.5 with 4 pieces left, 0.166 when we have 6 pieces left, and 0 with 7 or more pieces left (from the player with the least pieces)
+        var endgameScaling = Math.Max(0, 7 - Math.Min(whitePieceCount, blackPieceCount)) / 6.0;
+        var endgameScore = 0.0;
+        if (endgameScaling > 0)
+        {
+            // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
+            var whiteIsLoosing = whitePieceCount < blackPieceCount;
+            var loosingKingSquare = board.GetKingSquare(whiteIsLoosing);
+            var winningKingSquare = board.GetKingSquare(!whiteIsLoosing);
+            
+            var centerDistanceOfLoosingKing = Math.Abs(loosingKingSquare.Rank - 3.5) + Math.Abs(loosingKingSquare.File - 3.5);
+            var kingDistance = Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) + Math.Abs(loosingKingSquare.File - winningKingSquare.File);
+            // TODO 407/160 might be wrong (470 because centerDistanceOfLoosingKing is off by one, and whole scaling might be wrong when adding to our evaluate(bool) score)
+            endgameScore = 470 * centerDistanceOfLoosingKing + 160 * (14 - kingDistance);
+        }
+        
+        // Midgame evaluation: evaluate(true) - evaluate(false). But also needed for endgame to find actual mate.
+        return evaluate(true) - evaluate(false) - endgameScore * endgameScaling; // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
     }
 
     double evaluate(bool white)
