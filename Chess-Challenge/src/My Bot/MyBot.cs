@@ -5,7 +5,6 @@ using ChessChallenge.API;
 public class MyBot : IChessBot
 {
     Board board;
-    Timer timer;
     private Move bestMove;
     private double bestMoveEval;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
@@ -23,10 +22,9 @@ public class MyBot : IChessBot
         // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
     }
 
-    public Move Think(Board _board, Timer _timer)
+    public Move Think(Board _board, Timer timer)
     {
         board = _board;
-        timer = _timer;
         bestMove = Move.NullMove;
         maxExpectedMoveDuration = 10000000;
 
