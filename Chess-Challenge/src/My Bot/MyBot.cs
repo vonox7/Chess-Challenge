@@ -13,8 +13,10 @@ public class MyBot : IChessBot
     int maxExpectedMoveDuration;
     private double[] overshootFactor = { 1, 1, 1, 1 };
     Move[,] killerMoves = new Move[1000, 2]; // Lets hope that we never have more than 1000 moves in a game
+    
+    // Use array of structs, because I could do that in less tokens than array of classes
     private Transposition[] transpositions = new Transposition[100000];
-    class Transposition
+    struct Transposition
     {
         public ulong zobristKey;
         public Move bestMove; // TODO figure out if caching bestMove actually does something
@@ -110,9 +112,12 @@ public class MyBot : IChessBot
                 alpha = Math.Max(alpha, eval);
                 if (eval > maxEval)
                 {
-                    var transposition = transpositions[board.ZobristKey % 100000];
-                    transposition.zobristKey = board.ZobristKey;
-                    transposition.bestMove = move;
+                    var transposition = new Transposition
+                    {
+                        zobristKey = board.ZobristKey,
+                        bestMove = move
+                    };
+                    transpositions[board.ZobristKey % 100000] = transposition;
                     
                     maxEval = eval;
                     if (assignBestMove)
@@ -225,7 +230,7 @@ public class MyBot : IChessBot
                 // TODO wtf, we once promoted to a bishop?!? fix this
                 score += pieceValues[(int)piece.PieceType];
 
-                if (piece.IsPawn)
+                if (piece.IsPawn) // TODO should I check for passed pawn, is that with few tokens possible
                 {
                     // Make pawns move forward
                     var rank = piece.Square.Rank;
@@ -263,14 +268,5 @@ public class MyBot : IChessBot
         }
 
         return score;
-    }
-    
-    // constructor
-    public MyBot()
-    {
-        for (int i = 0; i < 100000; i++)
-        { // TODO struct (new every time) vs class (new here on the constructor)
-            transpositions[i] = new Transposition();
-        }
     }
 }
