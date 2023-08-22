@@ -104,8 +104,7 @@ public class MyBot : IChessBot
 
         if (move.IsPromotion) guess -= 3;
         if (move.IsCastles) guess -= 1;
-        // TODO why is this worse? if (move.IsCapture) guess -= 3;//(int)move.CapturePieceType - (int)move.MovePieceType + 5;
-        if (move.IsCapture) guess -= 3;
+        if (move.IsCapture) guess -= (int)move.CapturePieceType - (int)move.MovePieceType + 5;
 
         return guess;
     }
