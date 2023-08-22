@@ -55,7 +55,7 @@ public class MyBot : IChessBot
         var guess = 0;
 
         var transposition = transpositions[board.ZobristKey % 100000];
-        if (transposition.zobristKey == board.ZobristKey && move == transposition.bestMove) guess += 1000; // TODO FIXME -1000
+        if (transposition.zobristKey == board.ZobristKey && move == transposition.bestMove) guess -= 1000;
         
         // TODO check transposition table for previously good moves
         if (move == killerMoves[board.PlyCount, 0] || move == killerMoves[board.PlyCount, 1]) guess -= 10;
