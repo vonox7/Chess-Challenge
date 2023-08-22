@@ -55,7 +55,7 @@ public class MyBot : IChessBot
         var guess = 0;
 
         var transposition = transpositions[board.ZobristKey % 100000];
-        if (transposition.zobristKey == board.ZobristKey && move == transposition.bestMove) guess += 1000;
+        if (transposition.zobristKey == board.ZobristKey && move == transposition.bestMove) guess += 1000; // TODO FIXME -1000
         
         // TODO check transposition table for previously good moves
         if (move == killerMoves[board.PlyCount, 0] || move == killerMoves[board.PlyCount, 1]) guess -= 10;
@@ -208,13 +208,6 @@ public class MyBot : IChessBot
 
     double evaluate(bool white)
     {
-        // Checkmate is of course always best
-        if (board.IsInCheckmate())
-        {
-            // Add/Subtract plyCount to prefer mate in fewer moves
-            return board.IsWhiteToMove == white ? -100000000.0 + board.PlyCount : 100000000.0 - board.PlyCount;
-        }
-
         if (board.IsDraw())
         {
             return 0;
@@ -266,6 +259,13 @@ public class MyBot : IChessBot
         if (board.IsInCheck())
         {
             score += board.IsWhiteToMove == white ? 70 : -70;
+        }
+        
+        // Checkmate is of course always best. But a checkmate with a queen-promotion is considered best (because we might have overlooked an escape route that might have been possible with a rook-promotion)
+        if (board.IsInCheckmate())
+        {
+            // Add/Subtract plyCount to prefer mate in fewer moves TODO the other way around? because in the above IsInCheck it is?!?
+            score += board.IsWhiteToMove == white ? -100000000.0 + board.PlyCount : 100000000.0 - board.PlyCount;
         }
 
         return score;
