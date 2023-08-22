@@ -111,12 +111,11 @@ public class MyBot : IChessBot
                 alpha = Math.Max(alpha, eval);
                 if (eval > maxEval)
                 {
-                    var transposition = new Transposition
+                    transpositions[board.ZobristKey % 100000] = new Transposition
                     {
                         zobristKey = board.ZobristKey,
                         bestMove = move
                     };
-                    transpositions[board.ZobristKey % 100000] = transposition;
                     
                     maxEval = eval;
                     if (assignBestMove)
@@ -151,9 +150,11 @@ public class MyBot : IChessBot
                 beta = Math.Min(beta, eval);
                 if (eval < minEval)
                 {
-                    var transposition = transpositions[board.ZobristKey % 100000];
-                    transposition.zobristKey = board.ZobristKey;
-                    transposition.bestMove = move;
+                    transpositions[board.ZobristKey % 100000] = new Transposition
+                    {
+                        zobristKey = board.ZobristKey,
+                        bestMove = move
+                    };
                     
                     minEval = eval;
                     if (assignBestMove)
