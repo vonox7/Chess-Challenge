@@ -55,45 +55,45 @@ public class MyBot : IChessBot
             averageOvershootFactor); // #DEBUG
 
         // TODO wtf, we sometimes promote to a bishop or rook?!? fix this
-        if (bestMove.IsPromotion && (bestMove.PromotionPieceType == PieceType.Bishop ||
-                                     bestMove.PromotionPieceType == PieceType.Rook))
-        {
-            Console.WriteLine("I am " + (board.IsWhiteToMove ? "white" : "black"));
-            Console.WriteLine("---");
-            for (int i = board.PlyCount; i < board.PlyCount + 10; i++)
-            {
-                Console.WriteLine(killerMoves[i, 0] + " " + killerMoves[i, 1]);
-            }
-            Console.WriteLine("---");
-            Console.WriteLine("now -> " + evaluate());
-            board.MakeMove(bestMove);
-            Console.WriteLine((bestMove.PromotionPieceType == PieceType.Bishop ? "bishop" : "rook") + " -> " + evaluate());
-            board.UndoMove(bestMove);
-            var queenPromotionMove = new Move(bestMove.ToString().Substring("Move: '".Length, 4) + "q", board);
-            board.MakeMove(queenPromotionMove);
-            Console.WriteLine("queen -> " + evaluate());
-            board.UndoMove(queenPromotionMove);
-            Console.WriteLine("---");
-            for (int i = 1; i <= 7; i++)
-            {
-                minimax(i, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-                Console.WriteLine("Best move depth={0}: {1}", i, bestMove);
-            }
-            for (int i = 1; i <= 7; i++)
-            {
-                minimax(i, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-                Console.WriteLine("Best move depth={0}: {1}", i, bestMove);
-            }
-            Console.WriteLine("---");
-            for (int i = board.PlyCount; i < board.PlyCount + 10; i++)
-            {
-                Console.WriteLine(killerMoves[i, 0] + " " + killerMoves[i, 1]);
-            }
-            minimax(1, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-            Console.WriteLine($"Best move depth=1: {bestMove}");
-            Console.WriteLine(board.CreateDiagram());
-            throw new Exception("WTF, again a bishop/rook promotion?!?");
-        }
+        if (bestMove.IsPromotion && (bestMove.PromotionPieceType == PieceType.Bishop || // #DEBUG
+                                     bestMove.PromotionPieceType == PieceType.Rook)) // #DEBUG
+        { // #DEBUG
+            Console.WriteLine("I am " + (board.IsWhiteToMove ? "white" : "black")); // #DEBUG
+            Console.WriteLine("---"); // #DEBUG
+            for (int i = board.PlyCount; i < board.PlyCount + 10; i++) // #DEBUG
+            { // #DEBUG
+                Console.WriteLine(killerMoves[i, 0] + " " + killerMoves[i, 1]); // #DEBUG
+            } // #DEBUG
+            Console.WriteLine("---"); // #DEBUG
+            Console.WriteLine("now -> " + evaluate()); // #DEBUG
+            board.MakeMove(bestMove); // #DEBUG
+            Console.WriteLine((bestMove.PromotionPieceType == PieceType.Bishop ? "bishop" : "rook") + " -> " + evaluate()); // #DEBUG
+            board.UndoMove(bestMove); // #DEBUG
+            var queenPromotionMove = new Move(bestMove.ToString().Substring("Move: '".Length, 4) + "q", board); // #DEBUG
+            board.MakeMove(queenPromotionMove); // #DEBUG
+            Console.WriteLine("queen -> " + evaluate()); // #DEBUG
+            board.UndoMove(queenPromotionMove); // #DEBUG
+            Console.WriteLine("---"); // #DEBUG
+            for (int i = 1; i <= 7; i++) // #DEBUG
+            { // #DEBUG
+                minimax(i, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true); // #DEBUG
+                Console.WriteLine("Best move depth={0}: {1}", i, bestMove); // #DEBUG
+            } // #DEBUG
+            for (int i = 1; i <= 7; i++) // #DEBUG
+            { // #DEBUG
+                minimax(i, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true); // #DEBUG
+                Console.WriteLine("Best move depth={0}: {1}", i, bestMove); // #DEBUG
+            } // #DEBUG
+            Console.WriteLine("---"); // #DEBUG
+            for (int i = board.PlyCount; i < board.PlyCount + 10; i++) // #DEBUG
+            { // #DEBUG
+                Console.WriteLine(killerMoves[i, 0] + " " + killerMoves[i, 1]); // #DEBUG
+            } // #DEBUG
+            minimax(1, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true); // #DEBUG
+            Console.WriteLine($"Best move depth=1: {bestMove}"); // #DEBUG
+            Console.WriteLine(board.CreateDiagram()); // #DEBUG
+            throw new Exception("WTF, again a bishop/rook promotion?!?"); // #DEBUG
+        } // #DEBUG
 
 
         // TODO sometimes we get FiftyMoveRule, but still had an eval of e.g. -3300 (should have been 0)
