@@ -242,7 +242,7 @@ public class MyBot : IChessBot
     double evaluate()
     {
         // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
-        /*var whitePieceCount = BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard); 
+        var whitePieceCount = BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard); 
         var blackPieceCount = BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard);
         var endgameScore = 0.0;
         // TODO don't jump to endgame evaluation all at once, but gradually shift to it
@@ -257,10 +257,10 @@ public class MyBot : IChessBot
             var kingDistance = Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) + Math.Abs(loosingKingSquare.File - winningKingSquare.File);
             // TODO 407/160 might be wrong (470 because centerDistanceOfLoosingKing is off by one, and whole scaling might be wrong when adding to our evaluate(bool) score)
             endgameScore = 470 * centerDistanceOfLoosingKing + 160 * (14 - kingDistance);
-        }*/
+        }
         
         // Midgame evaluation: evaluate(true) - evaluate(false). But also needed for endgame to find actual mate.
-        return evaluate(true) - evaluate(false);// - endgameScore * (board.IsWhiteToMove ? 1 : -1); // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
+        return evaluate(true) - evaluate(false) - endgameScore * (board.IsWhiteToMove ? 1 : -1); // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
     }
 
     double evaluate(bool white)
