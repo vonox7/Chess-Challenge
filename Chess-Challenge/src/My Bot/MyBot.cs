@@ -6,7 +6,10 @@ public class MyBot : IChessBot
 {
     Board board;
     private Move bestMove;
-    private double bestMoveEval;
+    private double bestMoveEval; // #DEBUG
+    private int minDepth; // #DEBUG
+    private int quietMovesExaminated; // #DEBUG
+    private int nonQuietMovesExaminated; // #DEBUG
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
     private int[] backRankPieceNegativeScore = { 0, 0, -30, -25, 0, -20, 0 };
     int maxExpectedMoveDuration;
@@ -27,6 +30,9 @@ public class MyBot : IChessBot
         board = _board;
         bestMove = Move.NullMove;
         maxExpectedMoveDuration = 10000000;
+        minDepth = 10; // #DEBUG
+        quietMovesExaminated = 0; // #DEBUG
+        nonQuietMovesExaminated = 0; // #DEBUG
 
         // Time control
         var depth = 8;
@@ -44,8 +50,40 @@ public class MyBot : IChessBot
         // Search
         minimax(depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
         overshootFactor[board.PlyCount / 2 % 4] = (double) (timer.MillisecondsElapsedThisTurn + 5) / (maxExpectedMoveDuration + 5); // Add 5ms to avoid 0ms rounds/predictions impacting too much
-        //Console.WriteLine($"bestMoveEval={Math.Round(bestMoveEval)}, depth={depth}, expectedMs={maxExpectedMoveDuration}, actualMs={timer.MillisecondsElapsedThisTurn}, overshootMs={Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration)}, averageOvershootFactor={Math.Round(averageOvershootFactor, 2)}"); // #DEBUG
+        Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, minDepth={3,3}, quietMoves={4,7}, nonQuietMoves={5,7}, quietFactor={6,4:f2}, expectedMs={7,6}, actualMs={8,6}, overshootMs={9,4}, avgOvershootFactor={10,4:F2}",  // #DEBUG
+            bestMoveEval, // #DEBUG
+            bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < 100 ? " (black wins)" : ""), //#DEBUG
+            depth, // #DEBUG
+            minDepth, // #DEBUG
+            quietMovesExaminated, // #DEBUG
+            nonQuietMovesExaminated, // #DEBUG
+            (double) quietMovesExaminated / nonQuietMovesExaminated, // #DEBUG
+            maxExpectedMoveDuration, // #DEBUG
+            timer.MillisecondsElapsedThisTurn, // #DEBUG
+            Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration), // #DEBUG
+            averageOvershootFactor); // #DEBUG
 
+        // TODO wtf, we sometimes promote to a bishop or rook?!? fix this
+        /*if (bestMove.IsPromotion && (bestMove.PromotionPieceType == PieceType.Bishop ||
+                                     bestMove.PromotionPieceType == PieceType.Rook))
+        {
+            Console.WriteLine("now -> " + evaluate());
+            board.MakeMove(bestMove);
+            Console.WriteLine((bestMove.PromotionPieceType == PieceType.Bishop ? "bishop" : "rook") + " -> " + evaluate());
+            board.UndoMove(bestMove);
+            var queenPromotionMove = new Move(bestMove.ToString().Substring("Move: '".Length, 4) + "q", board);
+            board.MakeMove(queenPromotionMove);
+            Console.WriteLine("queen -> " + evaluate());
+            board.UndoMove(queenPromotionMove);
+            minimax(1, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
+            Console.WriteLine(bestMove);
+            minimax(3, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
+            Console.WriteLine(bestMove);
+            //throw new Exception("WTF, again a bishop/rook promotion?!?");
+        }*/
+        
+        // TODO sometimes we get FiftyMoveRule, but still had an eval of e.g. -3300 (should have been 0)
+        // TODO eval can drastically jump (e.g. from -300 to 2000 when changing from depth 5 to 6)
         return bestMove;
     }
 
@@ -72,9 +110,10 @@ public class MyBot : IChessBot
         return guess;
     }
     
-    double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
+    double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove, bool quiet = false)
     {
-        if (depth == 0 || board.IsInCheckmate() || board.IsDraw()) // TODO 3 cases different?
+        minDepth = Math.Min(minDepth, depth); // #DEBUG
+        if ((depth <= 0 && !quiet) || depth == 0 || board.IsInCheckmate() || board.IsDraw()) // TODO 3 cases different?
         {
             return evaluate();
         }
@@ -82,15 +121,24 @@ public class MyBot : IChessBot
         var ply = board.PlyCount;
 
         Span<Move> moves = stackalloc Move[256];
-        board.GetLegalMovesNonAlloc(ref moves);
+        board.GetLegalMovesNonAlloc(ref moves, quiet);
+        if (quiet) quietMovesExaminated += moves.Length; // #DEBUG
+        else nonQuietMovesExaminated += moves.Length; // #DEBUG
 
         // Shortcut for when there is only one move available (only keep it when we have tokens left).
         // If we implement any caching, don't cache this case, because it is not a real evaluation.
+        // Evaluation might be therefore pretty wrong
         if (moves.Length == 1 && assignBestMove)
         {
-            bestMoveEval = evaluate();
             bestMove = moves[0];
+            bestMoveEval = evaluate(); // #DEBUG
+            return bestMoveEval;
         }
+
+        /*if (moves.Length == 0 && quiet)
+        {
+            return evaluate();
+        }*/
             
         // Optimize via ab-pruning: first check moves that are more likely to be good
         Span<int> movePotential = stackalloc int[moves.Length];
@@ -107,6 +155,7 @@ public class MyBot : IChessBot
             foreach (var move in moves)
             {
                 board.MakeMove(move);
+                //var eval = minimax(depth - 1, false, alpha, beta, false, move.IsCapture && depth <= 1 && (depth > -2 || (int) move.CapturePieceType >= (int) move.MovePieceType));
                 var eval = minimax(depth - 1, false, alpha, beta, false);
                 board.UndoMove(move);
                 alpha = Math.Max(alpha, eval);
@@ -122,7 +171,7 @@ public class MyBot : IChessBot
                     if (assignBestMove)
                     {
                         bestMove = move;
-                        bestMoveEval = eval;
+                        bestMoveEval = eval; // #DEBUG
                     }
                 }
 
@@ -146,6 +195,7 @@ public class MyBot : IChessBot
             foreach (var move in moves)
             {
                 board.MakeMove(move);
+                //var eval = minimax(depth - 1, true, alpha, beta, false, move.IsCapture && depth <= 1 && (depth > -2 || (int) move.CapturePieceType >= (int) move.MovePieceType));
                 var eval = minimax(depth - 1, true, alpha, beta, false);
                 board.UndoMove(move);
                 beta = Math.Min(beta, eval);
@@ -161,7 +211,7 @@ public class MyBot : IChessBot
                     if (assignBestMove)
                     {
                         bestMove = move;
-                        bestMoveEval = eval;
+                        bestMoveEval = eval; // #DEBUG
                     }
                 }
 
@@ -221,7 +271,6 @@ public class MyBot : IChessBot
             for (int pieceIndex = 0; pieceIndex < pieceList.Count; pieceIndex++)
             {
                 var piece = pieceList[pieceIndex];
-                // TODO wtf, we once promoted to a bishop?!? fix this
                 score += pieceValues[(int)piece.PieceType];
 
                 if (piece.IsPawn) // TODO should I check for passed pawn, is that with few tokens possible
@@ -258,13 +307,14 @@ public class MyBot : IChessBot
         // Putting someone in check is quite often good
         if (board.IsInCheck())
         {
+            // TODO why is this +/-, and the other one below for IsInCheckmate() is -/+?
             score += board.IsWhiteToMove == white ? 70 : -70;
         }
         
         // Checkmate is of course always best. But a checkmate with a queen-promotion is considered best (because we might have overlooked an escape route that might have been possible with a rook-promotion)
         if (board.IsInCheckmate())
         {
-            // Add/Subtract plyCount to prefer mate in fewer moves TODO the other way around? because in the above IsInCheck it is?!?
+            // Add/Subtract plyCount to prefer mate in fewer moves
             score += board.IsWhiteToMove == white ? -100000000.0 + board.PlyCount : 100000000.0 - board.PlyCount;
         }
 
