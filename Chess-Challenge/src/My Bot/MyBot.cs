@@ -2,14 +2,12 @@
 using System.Linq;
 using ChessChallenge.API;
 
-// 27 +-26; 70+-70
 public class MyBot : IChessBot
 {
     Board board;
     private Move bestMove;
     private double bestMoveEval; // #DEBUG
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
-    private int[] backRankPieceNegativeScore = { 0, 0, -30, -25, 0, -20, 0 };
     int maxExpectedMoveDuration;
     private double[] overshootFactor = { 1, 1, 1, 1 };
     Move[,] killerMoves = new Move[1000, 2]; // Lets hope that we never have more than 1000 moves in a game
@@ -57,7 +55,7 @@ public class MyBot : IChessBot
             averageOvershootFactor); // #DEBUG
 
         // TODO wtf, we sometimes promote to a bishop or rook?!? fix this
-        /*if (bestMove.IsPromotion && (bestMove.PromotionPieceType == PieceType.Bishop ||
+        if (bestMove.IsPromotion && (bestMove.PromotionPieceType == PieceType.Bishop ||
                                      bestMove.PromotionPieceType == PieceType.Rook))
         {
             Console.WriteLine("I am " + (board.IsWhiteToMove ? "white" : "black"));
@@ -95,7 +93,7 @@ public class MyBot : IChessBot
             Console.WriteLine($"Best move depth=1: {bestMove}");
             Console.WriteLine(board.CreateDiagram());
             throw new Exception("WTF, again a bishop/rook promotion?!?");
-        }*/
+        }
 
 
         // TODO sometimes we get FiftyMoveRule, but still had an eval of e.g. -3300 (should have been 0)
@@ -186,7 +184,6 @@ public class MyBot : IChessBot
                     // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
                     if (!move.IsCapture)
                     {
-                        if (move.IsNull) throw new Exception("move is null??? 1");
                         killerMoves[ply, 1] = killerMoves[ply, 0];
                         killerMoves[ply, 0] = move;
                     }
@@ -226,7 +223,6 @@ public class MyBot : IChessBot
                     // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
                     if (!move.IsCapture)
                     {
-                        if (move.IsNull) throw new Exception("move is null??? 2");
                         killerMoves[ply, 1] = killerMoves[ply, 0];
                         killerMoves[ply, 0] = move;
                     }
@@ -288,11 +284,6 @@ public class MyBot : IChessBot
                     score += ranksAwayFromPromotion;
                 } // TODO endgame evaluation: king in center vs side/top/bottom (or near other pieces, no matter of color): board weight + 1 center-weight
 
-                /*if (piece.Square.Rank == (white ? 0 : 7))
-                { // TODO this leads to bishop/rook promotion?!?
-                    score += backRankPieceNegativeScore[(int)piece.PieceType]; TODO remove, should be covered indirectly
-                }*/
-                
                 var attacks =
                     BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
 
