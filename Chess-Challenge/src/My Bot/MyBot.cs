@@ -30,14 +30,15 @@ public class MyBot : IChessBot
 
         // Time control
         var depth = 8;
-        var pieceCountSquare = BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) * BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard);
+        // Add +2, as only with king on the board we still have 8 squares to move to, which is way above average for average pieces or average board density
+        var pieceCountSquare = (BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) + 2) * (BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard) + 2);
         var averageOvershootFactor = overshootFactor.Sum() / 4;
         while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 - 200 && depth > 3)
         {
             depth--;
             // "/ 100" matches roughly my local machine in release mode and https://github.com/SebLague/Chess-Challenge/issues/381. Local debug mode would be about "/ 10".
             // Dynamic time control with averageOvershootFactor solves the problem of having different hardware
-            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.5) / 100 * averageOvershootFactor);
+            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.5) / 100.0 * averageOvershootFactor);
         }
         
         // Search
