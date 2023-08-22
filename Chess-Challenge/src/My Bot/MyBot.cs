@@ -44,13 +44,15 @@ public class MyBot : IChessBot
             depth--;
             // "/ 100" matches roughly my local machine in release mode and https://github.com/SebLague/Chess-Challenge/issues/381. Local debug mode would be about "/ 10".
             // Dynamic time control with averageOvershootFactor solves the problem of having different hardware
+            //maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 2.2) / 100.0 * averageOvershootFactor); // TODO this seems better
             maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.5) / 100.0 * averageOvershootFactor);
+            //Console.WriteLine(depth + " -> " + maxExpectedMoveDuration);
         }
         
         // Search
         minimax(depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
         overshootFactor[board.PlyCount / 2 % 4] = (double) (timer.MillisecondsElapsedThisTurn + 5) / (maxExpectedMoveDuration + 5); // Add 5ms to avoid 0ms rounds/predictions impacting too much
-        Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, minDepth={3,3}, quietMoves={4,7}, nonQuietMoves={5,7}, quietFactor={6,4:f2}, expectedMs={7,6}, actualMs={8,6}, overshootMs={9,4}, avgOvershootFactor={10,4:F2}",  // #DEBUG
+        /*Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, minDepth={3,3}, quietMoves={4,7}, nonQuietMoves={5,7}, quietFactor={6,4:f2}, expectedMs={7,6}, actualMs={8,6}, overshootMs={9,4}, avgOvershootFactor={10,4:F2}",  // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < 100 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
@@ -61,12 +63,18 @@ public class MyBot : IChessBot
             maxExpectedMoveDuration, // #DEBUG
             timer.MillisecondsElapsedThisTurn, // #DEBUG
             Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration), // #DEBUG
-            averageOvershootFactor); // #DEBUG
+            averageOvershootFactor); // #DEBUG*/
 
         // TODO wtf, we sometimes promote to a bishop or rook?!? fix this
         /*if (bestMove.IsPromotion && (bestMove.PromotionPieceType == PieceType.Bishop ||
                                      bestMove.PromotionPieceType == PieceType.Rook))
         {
+            Console.WriteLine("---");
+            for (int i = board.PlyCount; i < board.PlyCount + 10; i++)
+            {
+                Console.WriteLine(killerMoves[i, 0] + " " + killerMoves[i, 1]);
+            }
+            Console.WriteLine("---");
             Console.WriteLine("now -> " + evaluate());
             board.MakeMove(bestMove);
             Console.WriteLine((bestMove.PromotionPieceType == PieceType.Bishop ? "bishop" : "rook") + " -> " + evaluate());
@@ -75,13 +83,26 @@ public class MyBot : IChessBot
             board.MakeMove(queenPromotionMove);
             Console.WriteLine("queen -> " + evaluate());
             board.UndoMove(queenPromotionMove);
-            minimax(1, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-            Console.WriteLine(bestMove);
-            minimax(3, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-            Console.WriteLine(bestMove);
-            //throw new Exception("WTF, again a bishop/rook promotion?!?");
+            Console.WriteLine("---");
+            for (int i = 1; i <= 7; i++)
+            {
+                minimax(i, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
+                Console.WriteLine("Best move depth={0}: {1}", i, bestMove);
+            }
+            for (int i = 1; i <= 7; i++)
+            {
+                minimax(i, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
+                Console.WriteLine("Best move depth={0}: {1}", i, bestMove);
+            }
+            Console.WriteLine("---");
+            for (int i = board.PlyCount; i < board.PlyCount + 10; i++)
+            {
+                Console.WriteLine(killerMoves[i, 0] + " " + killerMoves[i, 1]);
+            }
+            throw new Exception("WTF, again a bishop/rook promotion?!?");
         }*/
-        
+
+
         // TODO sometimes we get FiftyMoveRule, but still had an eval of e.g. -3300 (should have been 0)
         // TODO eval can drastically jump (e.g. from -300 to 2000 when changing from depth 5 to 6)
         return bestMove;
@@ -252,7 +273,7 @@ public class MyBot : IChessBot
         }
         
         // Midgame evaluation: evaluate(true) - evaluate(false). But also needed for endgame to find actual mate.
-        return evaluate(true) - evaluate(false) - endgameScore; // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
+        return evaluate(true) - evaluate(false) - endgameScore * (board.IsWhiteToMove ? 1 : -1); // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
     }
 
     double evaluate(bool white)
