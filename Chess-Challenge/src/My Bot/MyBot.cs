@@ -310,8 +310,9 @@ public class MyBot : IChessBot
         // Checkmate is of course always best. But a checkmate with a queen-promotion is considered best (because we might have overlooked an escape route that might have been possible with a rook-promotion)
         if (board.IsInCheckmate())
         {
-            // Add/Subtract plyCount to prefer mate in fewer moves
-            score += board.IsWhiteToMove == white ? -100000000.0 + board.PlyCount : 100000000.0 - board.PlyCount;
+            // Add/Subtract plyCount to prefer mate in fewer moves. Multiply by more than any e.g. pawn->queen promotion while taking opponent queen would bring
+            var mateInXboost = board.PlyCount * 10000;
+            score += board.IsWhiteToMove == white ? -100000000.0 + mateInXboost : 100000000.0 - mateInXboost;
         }
 
         return score;
