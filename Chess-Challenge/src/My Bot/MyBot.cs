@@ -276,10 +276,29 @@ public class MyBot : IChessBot
 
                 if (piece.IsPawn) // TODO should I check for passed pawn, is that with few tokens possible
                 {
-                    // Make pawns move forward
                     var rank = piece.Square.Rank;
+                    
+                    // "Passed" pawns (here: pawn with no other piece from ourself or enemy) are good pawns
+                    ulong bitboardInfrontOfPawn = 0;
+                    if (white)
+                    {
+                        for (int i = rank + 1; i < 8; i++)
+                        {
+                            // TODO also left + right of our square (but avoid under/overflow!)?
+                            bitboardInfrontOfPawn |= 1ul << (i * 8 + piece.Square.File);
+                        }
+                    }
+                    else
+                    {
+                        for (int i = rank - 1; i >= 0; i--)
+                        {
+                            bitboardInfrontOfPawn |= 1ul << (i * 8 + piece.Square.File);
+                        }
+                    }
+                    
+                    // Make pawns move forward
                     var ranksAwayFromPromotion = white ? rank : 7 - rank;
-                    score += ranksAwayFromPromotion;
+                    score += ranksAwayFromPromotion * ((bitboardInfrontOfPawn & board.AllPiecesBitboard) == 0 ? 10 : 1);
                 } // TODO endgame evaluation: king in center vs side/top/bottom (or near other pieces, no matter of color): board weight + 1 center-weight
 
                 var attacks =
