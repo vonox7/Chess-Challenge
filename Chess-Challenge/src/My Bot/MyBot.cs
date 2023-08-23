@@ -13,13 +13,13 @@ public class MyBot : IChessBot
     Move[,] killerMoves = new Move[1000, 2]; // Lets hope that we never have more than 1000 moves in a game
     
     // Use array of structs, because I could do that in less tokens than array of classes
-    private Transposition[] transpositions = new Transposition[100000];
+    /*private Transposition[] transpositions = new Transposition[100000];
     struct Transposition
     {
         public ulong zobristKey;
         public Move bestMove; // TODO figure out if caching bestMove actually does something
         // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
-    }
+    }*/
 
     public Move Think(Board _board, Timer timer)
     {
@@ -37,9 +37,7 @@ public class MyBot : IChessBot
             depth--;
             // "/ 100" matches roughly my local machine in release mode and https://github.com/SebLague/Chess-Challenge/issues/381. Local debug mode would be about "/ 10".
             // Dynamic time control with averageOvershootFactor solves the problem of having different hardware
-            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 2.2) / 100.0 * averageOvershootFactor); // TODO this seems better
-            //maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.5) / 100.0 * averageOvershootFactor);
-            //Console.WriteLine(depth + " -> " + maxExpectedMoveDuration);
+            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 2.2) / 100.0 * averageOvershootFactor);
         }
         
         // Search
@@ -92,7 +90,7 @@ public class MyBot : IChessBot
             minimax(1, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true); // #DEBUG
             Console.WriteLine($"Best move depth=1: {bestMove}"); // #DEBUG
             Console.WriteLine(board.CreateDiagram()); // #DEBUG
-            throw new Exception("WTF, again a bishop/rook promotion?!?"); // #DEBUG
+            //throw new Exception("WTF, again a bishop/rook promotion?!?"); // #DEBUG
         } // #DEBUG
 
 
@@ -106,8 +104,8 @@ public class MyBot : IChessBot
         // TODO figure out if 1000/-10/-1/-3/-1/-5 (and no scaling on capture-movePieceType) is a good guess
         var guess = 0;
 
-        var transposition = transpositions[board.ZobristKey % 100000];
-        if (transposition.zobristKey == board.ZobristKey && move == transposition.bestMove) guess -= 1000;
+        //var transposition = transpositions[board.ZobristKey % 100000]; // TODO wtf, why is this bad, and +1000 would be still good? 
+        //if (transposition.zobristKey == board.ZobristKey && move == transposition.bestMove) guess -= 1000;
         
         // TODO check transposition table for previously good moves
         if (move == killerMoves[board.PlyCount, 0] || move == killerMoves[board.PlyCount, 1]) guess -= 10;
@@ -165,11 +163,11 @@ public class MyBot : IChessBot
                 alpha = Math.Max(alpha, eval);
                 if (eval > maxEval)
                 {
-                    transpositions[board.ZobristKey % 100000] = new Transposition
+                    /*transpositions[board.ZobristKey % 100000] = new Transposition
                     {
                         zobristKey = board.ZobristKey,
                         bestMove = move
-                    };
+                    };*/
                     
                     maxEval = eval;
                     if (assignBestMove)
@@ -204,11 +202,11 @@ public class MyBot : IChessBot
                 beta = Math.Min(beta, eval);
                 if (eval < minEval)
                 {
-                    transpositions[board.ZobristKey % 100000] = new Transposition
+                    /*transpositions[board.ZobristKey % 100000] = new Transposition
                     {
                         zobristKey = board.ZobristKey,
                         bestMove = move
-                    };
+                    };*/
                     
                     minEval = eval;
                     if (assignBestMove)
