@@ -53,7 +53,7 @@ public class MyBot : IChessBot
             averageOvershootFactor); // #DEBUG
 
         // TODO wtf, we sometimes promote to a bishop or rook?!? fix this
-        if (bestMove.IsPromotion && (bestMove.PromotionPieceType == PieceType.Bishop || // #DEBUG
+        /*if (bestMove.IsPromotion && (bestMove.PromotionPieceType == PieceType.Bishop || // #DEBUG
                                      bestMove.PromotionPieceType == PieceType.Rook)) // #DEBUG
         { // #DEBUG
             Console.WriteLine("I am " + (board.IsWhiteToMove ? "white" : "black")); // #DEBUG
@@ -91,7 +91,7 @@ public class MyBot : IChessBot
             Console.WriteLine($"Best move depth=1: {bestMove}"); // #DEBUG
             Console.WriteLine(board.CreateDiagram()); // #DEBUG
             //throw new Exception("WTF, again a bishop/rook promotion?!?"); // #DEBUG
-        } // #DEBUG
+        }*/ // #DEBUG
 
 
         // TODO sometimes we get FiftyMoveRule, but still had an eval of e.g. -3300 (should have been 0)
