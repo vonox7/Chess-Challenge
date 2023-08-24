@@ -71,7 +71,9 @@ public class MyBot : IChessBot
         if (board.IsInCheck()) guess -= 1;
         board.UndoMove(move);
 
-        if (move.IsPromotion) guess -= 3;
+        // Queen promotions are best, but in edge cases knight promotions could also work.
+        // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
+        if (move.IsPromotion) guess -= (int)move.PromotionPieceType;
         if (move.IsCastles) guess -= 1;
         if (move.IsCapture) guess -= (int)move.CapturePieceType - (int)move.MovePieceType + 5;
 
