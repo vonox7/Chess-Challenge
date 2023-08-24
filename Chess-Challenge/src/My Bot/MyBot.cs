@@ -6,7 +6,7 @@ public class MyBot : IChessBot
 {
     Board board;
     private Move bestMove;
-    private double bestMoveEval; // #DEBUG
+    private double bestMoveEval;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
     int maxExpectedMoveDuration;
     private double[] overshootFactor = { 1, 1, 1, 1 };
@@ -29,15 +29,14 @@ public class MyBot : IChessBot
 
         // Time control
         var depth = 8;
-        // Add +2, as only with king on the board we still have 8 squares to move to, which is way above average for average pieces or average board density
-        var pieceCountSquare = (BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) + 2) * (BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard) + 2);
+        var pieceCountSquare = BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) * BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard);
         var averageOvershootFactor = overshootFactor.Sum() / 4;
         while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 - 200 && depth > 3)
         {
             depth--;
             // "/ 100" matches roughly my local machine in release mode and https://github.com/SebLague/Chess-Challenge/issues/381. Local debug mode would be about "/ 10".
             // Dynamic time control with averageOvershootFactor solves the problem of having different hardware
-            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 2.2) / 100.0 * averageOvershootFactor);
+            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.5) / 100 * averageOvershootFactor);
         }
         
         // Search
@@ -51,48 +50,6 @@ public class MyBot : IChessBot
             timer.MillisecondsElapsedThisTurn, // #DEBUG
             Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration), // #DEBUG
             averageOvershootFactor); // #DEBUG
-
-        // TODO wtf, we sometimes promote to a bishop or rook?!? fix this
-        /*if (bestMove.IsPromotion && (bestMove.PromotionPieceType == PieceType.Bishop || // #DEBUG
-                                     bestMove.PromotionPieceType == PieceType.Rook)) // #DEBUG
-        { // #DEBUG
-            Console.WriteLine("I am " + (board.IsWhiteToMove ? "white" : "black")); // #DEBUG
-            Console.WriteLine("---"); // #DEBUG
-            for (int i = board.PlyCount; i < board.PlyCount + 10; i++) // #DEBUG
-            { // #DEBUG
-                Console.WriteLine(killerMoves[i, 0] + " " + killerMoves[i, 1]); // #DEBUG
-            } // #DEBUG
-            Console.WriteLine("---"); // #DEBUG
-            Console.WriteLine("now -> " + evaluate()); // #DEBUG
-            board.MakeMove(bestMove); // #DEBUG
-            Console.WriteLine((bestMove.PromotionPieceType == PieceType.Bishop ? "bishop" : "rook") + " -> " + evaluate()); // #DEBUG
-            board.UndoMove(bestMove); // #DEBUG
-            var queenPromotionMove = new Move(bestMove.ToString().Substring("Move: '".Length, 4) + "q", board); // #DEBUG
-            board.MakeMove(queenPromotionMove); // #DEBUG
-            Console.WriteLine("queen -> " + evaluate()); // #DEBUG
-            board.UndoMove(queenPromotionMove); // #DEBUG
-            Console.WriteLine("---"); // #DEBUG
-            for (int i = 1; i <= 7; i++) // #DEBUG
-            { // #DEBUG
-                minimax(i, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true); // #DEBUG
-                Console.WriteLine("Best move depth={0}: {1}", i, bestMove); // #DEBUG
-            } // #DEBUG
-            for (int i = 1; i <= 7; i++) // #DEBUG
-            { // #DEBUG
-                minimax(i, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true); // #DEBUG
-                Console.WriteLine("Best move depth={0}: {1}", i, bestMove); // #DEBUG
-            } // #DEBUG
-            Console.WriteLine("---"); // #DEBUG
-            for (int i = board.PlyCount; i < board.PlyCount + 10; i++) // #DEBUG
-            { // #DEBUG
-                Console.WriteLine(killerMoves[i, 0] + " " + killerMoves[i, 1]); // #DEBUG
-            } // #DEBUG
-            minimax(1, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true); // #DEBUG
-            Console.WriteLine($"Best move depth=1: {bestMove}"); // #DEBUG
-            Console.WriteLine(board.CreateDiagram()); // #DEBUG
-            //throw new Exception("WTF, again a bishop/rook promotion?!?"); // #DEBUG
-        }*/ // #DEBUG
-
 
         // TODO sometimes we get FiftyMoveRule, but still had an eval of e.g. -3300 (should have been 0)
         // TODO eval can drastically jump (e.g. from -300 to 2000 when changing from depth 5 to 6)
@@ -235,26 +192,8 @@ public class MyBot : IChessBot
     // TODO why are we making 1-move blunders in valibot-0.7? https://chess.stjo.dev/game/410390/
     double evaluate()
     {
-        // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
-        var whitePieceCount = BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard); 
-        var blackPieceCount = BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard);
-        var endgameScore = 0.0;
-        // TODO don't jump to endgame evaluation all at once, but gradually shift to it
-        if (whitePieceCount < 2 || blackPieceCount < 2)
-        {
-            // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
-            var whiteIsLoosing = whitePieceCount < blackPieceCount;
-            var loosingKingSquare = board.GetKingSquare(whiteIsLoosing);
-            var winningKingSquare = board.GetKingSquare(!whiteIsLoosing);
-            
-            var centerDistanceOfLoosingKing = Math.Abs(loosingKingSquare.Rank - 3.5) + Math.Abs(loosingKingSquare.File - 3.5);
-            var kingDistance = Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) + Math.Abs(loosingKingSquare.File - winningKingSquare.File);
-            // TODO 407/160 might be wrong (470 because centerDistanceOfLoosingKing is off by one, and whole scaling might be wrong when adding to our evaluate(bool) score)
-            endgameScore = 470 * centerDistanceOfLoosingKing + 160 * (14 - kingDistance);
-        }
-        
         // Midgame evaluation: evaluate(true) - evaluate(false). But also needed for endgame to find actual mate.
-        return evaluate(true) - evaluate(false) - endgameScore * (board.IsWhiteToMove ? 1 : -1); // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
+        return evaluate(true) - evaluate(false); // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
     }
 
     double evaluate(bool white)
