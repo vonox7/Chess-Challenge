@@ -11,15 +11,6 @@ public class MyBot : IChessBot
     int maxExpectedMoveDuration;
     private double[] overshootFactor = { 1, 1, 1, 1 };
     Move[,] killerMoves = new Move[1000, 2]; // Lets hope that we never have more than 1000 moves in a game
-    
-    // Use array of structs, because I could do that in less tokens than array of classes
-    /*private Transposition[] transpositions = new Transposition[100000];
-    struct Transposition
-    {
-        public ulong zobristKey;
-        public Move bestMove; // TODO figure out if caching bestMove actually does something
-        // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
-    }*/
 
     public Move Think(Board _board, Timer timer)
     {
@@ -44,7 +35,7 @@ public class MyBot : IChessBot
         overshootFactor[board.PlyCount / 2 % 4] = (double) (timer.MillisecondsElapsedThisTurn + 5) / (maxExpectedMoveDuration + 5); // Add 5ms to avoid 0ms rounds/predictions impacting too much
         Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, expectedMs={3,6}, actualMs={4,6}, overshootMs={5,4}, avgOvershootFactor={6,4:F2}",  // #DEBUG
             bestMoveEval, // #DEBUG
-            bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < 100 ? " (black wins)" : ""), //#DEBUG
+            bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < -100 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
             maxExpectedMoveDuration, // #DEBUG
             timer.MillisecondsElapsedThisTurn, // #DEBUG
@@ -191,7 +182,6 @@ public class MyBot : IChessBot
         }
     }
 
-    // TODO why are we making 1-move blunders in valibot-0.7? https://chess.stjo.dev/game/410390/
     double evaluate()
     {
         // Midgame evaluation: evaluate(true) - evaluate(false). But also needed for endgame to find actual mate.
