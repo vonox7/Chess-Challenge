@@ -10,7 +10,10 @@ public class MyBot : IChessBot
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
     int maxExpectedMoveDuration;
     private double[] overshootFactor = { 1, 1, 1, 1 };
-    Move[,] killerMoves = new Move[1000, 2]; // Lets hope that we never have more than 1000 moves in a game
+    
+    // See https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Heuristic_improvements
+    // Lets hope that we never have more than 1000 moves in a game
+    Move[] killerMoves = new Move[1000];
 
     public Move Think(Board _board, Timer timer)
     {
@@ -51,7 +54,7 @@ public class MyBot : IChessBot
         var guess = 0;
 
         // TODO check transposition table for previously good moves
-        if (move == killerMoves[board.PlyCount, 0] || move == killerMoves[board.PlyCount, 1]) guess -= 10;
+        if (move == killerMoves[board.PlyCount]) guess -= 10;
 
         board.MakeMove(move);
         if (board.IsInCheck()) guess -= 1;
@@ -121,8 +124,7 @@ public class MyBot : IChessBot
                     // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
                     if (!move.IsCapture)
                     {
-                        killerMoves[ply, 1] = killerMoves[ply, 0];
-                        killerMoves[ply, 0] = move;
+                        killerMoves[ply] = move;
                     }
                     break;
                 }
@@ -151,11 +153,9 @@ public class MyBot : IChessBot
 
                 if (beta <= alpha)
                 {
-                    // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
                     if (!move.IsCapture)
                     {
-                        killerMoves[ply, 1] = killerMoves[ply, 0];
-                        killerMoves[ply, 0] = move;
+                        killerMoves[ply] = move;
                     }
                     break;
                 }
