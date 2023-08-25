@@ -41,9 +41,7 @@ public class MyBot : IChessBot
             timer.MillisecondsElapsedThisTurn, // #DEBUG
             Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration), // #DEBUG
             averageOvershootFactor); // #DEBUG
-
-        // TODO sometimes we get FiftyMoveRule, but still had an eval of e.g. -3300 (should have been 0)
-        // TODO eval can drastically jump (e.g. from -300 to 2000 when changing from depth 5 to 6)
+        
         return bestMove;
     }
 
@@ -52,9 +50,6 @@ public class MyBot : IChessBot
         // TODO figure out if 1000/-10/-1/-3/-1/-5 (and no scaling on capture-movePieceType) is a good guess
         var guess = 0;
 
-        //var transposition = transpositions[board.ZobristKey % 100000]; // TODO wtf, why is this bad, and +1000 would be still good? 
-        //if (transposition.zobristKey == board.ZobristKey && move == transposition.bestMove) guess -= 1000;
-        
         // TODO check transposition table for previously good moves
         if (move == killerMoves[board.PlyCount, 0] || move == killerMoves[board.PlyCount, 1]) guess -= 10;
 
