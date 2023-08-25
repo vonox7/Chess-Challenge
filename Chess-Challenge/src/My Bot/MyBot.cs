@@ -25,17 +25,17 @@ public class MyBot : IChessBot
         var depth = 8;
         var pieceCountSquare = BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) * BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard);
         var averageOvershootFactor = overshootFactor.Sum() / 4;
-        while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 - 200 && depth > 3)
+        while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 && depth > 3)
         {
             depth--;
             // "/ 100" matches roughly my local machine in release mode and https://github.com/SebLague/Chess-Challenge/issues/381. Local debug mode would be about "/ 10".
             // Dynamic time control with averageOvershootFactor solves the problem of having different hardware
-            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.5) / 100 * averageOvershootFactor);
+            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.7) / 100 * averageOvershootFactor);
         }
         
         // Search
         minimax(depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
-        overshootFactor[board.PlyCount / 2 % 4] = (double) (timer.MillisecondsElapsedThisTurn + 5) / (maxExpectedMoveDuration + 5); // Add 5ms to avoid 0ms rounds/predictions impacting too much
+        overshootFactor[board.PlyCount / 2 % 4] = (double) (timer.MillisecondsElapsedThisTurn + 3) / (maxExpectedMoveDuration + 3); // Add 3ms to avoid 0ms rounds/predictions impacting too much
         Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, expectedMs={3,6}, actualMs={4,6}, overshootMs={5,4}, avgOvershootFactor={6,4:F2}",  // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < -100 ? " (black wins)" : ""), //#DEBUG
@@ -202,6 +202,7 @@ public class MyBot : IChessBot
                 // Move pieces to places with much freedom TODO up to how much freedom is it relevant? bishop < 2 freedom = trapped = very bad
                 // TODO freedom is more important, should lead to moving pawn forward after castling
                 // TODO weight bei how "relevant" is attacking/protecting piece
+                // TODO try out this: score += Math.Log2(BitboardHelper.GetNumberOfSetBits(attacks));
                 score += 0.5 * BitboardHelper.GetNumberOfSetBits(attacks);
 
                 // TODO Make pieces protect other pieces 
