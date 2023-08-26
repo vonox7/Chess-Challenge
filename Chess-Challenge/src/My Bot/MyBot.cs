@@ -32,7 +32,7 @@ public class MyBot : IChessBot
         var depth = 0;
         // TODO figure out when to stop. Each additional depth-round takes ~5 times as much as the previous one.
         // So when assuming that we want to spend ~1/20th of the remaining time in the round, multiply by 5*20=100.
-        while (timer.MillisecondsElapsedThisTurn * 100 < timer.MillisecondsRemaining)
+        while (timer.MillisecondsElapsedThisTurn * 200 < timer.MillisecondsRemaining)
         {
             if (Double.IsNaN(minimax(++depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true, false))) break;
         }
