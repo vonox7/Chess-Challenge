@@ -179,6 +179,7 @@ public class MyBot : IChessBot
         }
 
         var score = 0.0;
+        //var undefendedPieces = white ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
 
         foreach (var pieceList in board.GetAllPieceLists())
         {
@@ -198,6 +199,7 @@ public class MyBot : IChessBot
 
                 var attacks =
                     BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
+                //undefendedPieces &= ~attacks;
 
                 // Move pieces to places with much freedom TODO up to how much freedom is it relevant? bishop < 2 freedom = trapped = very bad
                 // TODO freedom is more important, should lead to moving pawn forward after castling
@@ -212,6 +214,9 @@ public class MyBot : IChessBot
                 score += 1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard);
             }
         }
+
+        // TODO try out: We want to have a position where all pieces are defended (didn't help in the current situation)
+        // score -= 5 * BitboardHelper.GetNumberOfSetBits(undefendedPieces);
 
         // TODO favour early castle & castle rights
 
