@@ -53,7 +53,7 @@ public class MyBot : IChessBot
         var guess = 0;
         
         // Check transposition table for previously good moves
-        var transposition = transpositions[board.ZobristKey % 100000];
+        var transposition = transpositions[board.ZobristKey % 1000000];
         if (transposition.zobristKey == board.ZobristKey)
         {
             transpositionHit++; // #DEBUG 
