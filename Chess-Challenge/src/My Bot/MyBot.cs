@@ -34,7 +34,7 @@ public class MyBot : IChessBot
         // So when assuming that we want to spend ~1/20th of the remaining time in the round, multiply by 5*20=100.
         while (timer.MillisecondsElapsedThisTurn * 100 < timer.MillisecondsRemaining)
         {
-            minimax(++depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true, false);
+            if (Double.IsNaN(minimax(++depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true, false))) break;
         }
         
         Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, transpositionHits={3,4:F2}",  // #DEBUG
@@ -97,8 +97,8 @@ public class MyBot : IChessBot
         if (moves.Length == 1 && assignBestMove)
         {
             bestMove = moves[0];
-            bestMoveEval = evaluate(); // #DEBUG
-            return bestMoveEval;
+            bestMoveEval = Double.NaN; // #DEBUG
+            return Double.NaN;
         }
             
         // Optimize via ab-pruning: first check moves that are more likely to be good
