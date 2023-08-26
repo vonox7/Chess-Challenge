@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using ChessChallenge.API;
 
 public class MyBot : IChessBot
@@ -8,8 +7,15 @@ public class MyBot : IChessBot
     private Move bestMove;
     private double bestMoveEval;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
-    int maxExpectedMoveDuration;
-    private double[] overshootFactor = { 1, 1, 1, 1 };
+    private Transposition[] transpositions = new Transposition[1000000];
+    int transpositionHit; // #DEBUG
+    int transpositionMiss; // #DEBUG
+    struct Transposition
+    {
+        public ulong zobristKey; // Store zobristKey to avoid hash collisions (not 100% perfect, but probably good enough)
+        public Move bestMove; // TODO figure out if caching bestMove actually does something
+        // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
+    }
     
     // See https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Heuristic_improvements
     // Lets hope that we never have more than 1000 moves in a game
@@ -19,31 +25,23 @@ public class MyBot : IChessBot
     {
         board = _board;
         bestMove = Move.NullMove;
-        maxExpectedMoveDuration = 10000000;
-
-        // Time control
-        var depth = 8;
-        var pieceCountSquare = BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) * BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard);
-        var averageOvershootFactor = overshootFactor.Sum() / 4;
-        while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 - 200 && depth > 3) // TODO -200 fixes timeout, which leads then to illegalmove in the next game
+        transpositionHit = 0; // #DEBUG
+        transpositionMiss = 0; // #DEBUG
+        
+        // Search via iterative deepening
+        var depth = 0;
+        // TODO figure out when to stop. Each additional depth-round takes ~5 times as much as the previous one.
+        // So when assuming that we want to spend ~1/20th of the remaining time in the round, multiply by 5*20=100.
+        while (timer.MillisecondsElapsedThisTurn * 100 < timer.MillisecondsRemaining)
         {
-            depth--;
-            // "/ 100" matches roughly my local machine in release mode and https://github.com/SebLague/Chess-Challenge/issues/381. Local debug mode would be about "/ 10".
-            // Dynamic time control with averageOvershootFactor solves the problem of having different hardware
-            maxExpectedMoveDuration = (int) (Math.Pow(pieceCountSquare, (depth - 2) / 1.7) / 100 * averageOvershootFactor);
+            minimax(++depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true, false);
         }
         
-        // Search
-        minimax(depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true, false);
-        overshootFactor[board.PlyCount / 2 % 4] = (double) (timer.MillisecondsElapsedThisTurn + 3) / (maxExpectedMoveDuration + 3); // Add 3ms to avoid 0ms rounds/predictions impacting too much
-        Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, expectedMs={3,6}, actualMs={4,6}, overshootMs={5,4}, avgOvershootFactor={6,4:F2}",  // #DEBUG
+        Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, transpositionHits={3,4:F2}",  // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < -100 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
-            maxExpectedMoveDuration, // #DEBUG
-            timer.MillisecondsElapsedThisTurn, // #DEBUG
-            Math.Max(0, timer.MillisecondsElapsedThisTurn - maxExpectedMoveDuration), // #DEBUG
-            averageOvershootFactor); // #DEBUG
+            (double) transpositionHit / (transpositionHit + transpositionMiss)); // #DEBUG
         
         return bestMove;
     }
@@ -53,8 +51,20 @@ public class MyBot : IChessBot
     {
         // TODO figure out if 1000/-10/-1/-3/-1/-5 (and no scaling on capture-movePieceType) is a good guess
         var guess = 0;
+        
+        // Check transposition table for previously good moves
+        var transposition = transpositions[board.ZobristKey % 100000];
+        if (transposition.zobristKey == board.ZobristKey)
+        {
+            transpositionHit++; // #DEBUG 
+            // TODO checking for bestMove is the only thing we want to do here?
+            if (move == transposition.bestMove) guess -= 1000;
+        }
+        else // #DEBUG 
+        { // #DEBUG 
+            transpositionMiss++; // #DEBUG 
+        } // #DEBUG 
 
-        // TODO check transposition table for previously good moves
         if (move == killerMoves[board.PlyCount]) guess -= 10;
 
         board.MakeMove(move);
@@ -115,6 +125,11 @@ public class MyBot : IChessBot
                 alpha = Math.Max(alpha, eval);
                 if (eval > maxEval)
                 {
+                    transpositions[board.ZobristKey % 1000000] = new Transposition
+                    {
+                        zobristKey = board.ZobristKey,
+                        bestMove = move
+                    };
                     maxEval = eval;
                     if (assignBestMove)
                     {
@@ -147,6 +162,11 @@ public class MyBot : IChessBot
                 beta = Math.Min(beta, eval);
                 if (eval < minEval)
                 {
+                    transpositions[board.ZobristKey % 1000000] = new Transposition
+                    {
+                        zobristKey = board.ZobristKey,
+                        bestMove = move
+                    };
                     minEval = eval;
                     if (assignBestMove)
                     {
