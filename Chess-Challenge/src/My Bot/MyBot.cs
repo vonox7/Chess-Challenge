@@ -34,7 +34,7 @@ public class MyBot : IChessBot
         }
         
         // Search
-        minimax(depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true);
+        minimax(depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true, false);
         overshootFactor[board.PlyCount / 2 % 4] = (double) (timer.MillisecondsElapsedThisTurn + 3) / (maxExpectedMoveDuration + 3); // Add 3ms to avoid 0ms rounds/predictions impacting too much
         Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, expectedMs={3,6}, actualMs={4,6}, overshootMs={5,4}, avgOvershootFactor={6,4:F2}",  // #DEBUG
             bestMoveEval, // #DEBUG
@@ -48,6 +48,7 @@ public class MyBot : IChessBot
         return bestMove;
     }
 
+    // TODO endgame: if we found mate, stop searching. With 2 queens on the board and mate in 1, we often search for > 1 second
     int getMovePotential(Move move)
     {
         // TODO figure out if 1000/-10/-1/-3/-1/-5 (and no scaling on capture-movePieceType) is a good guess
@@ -69,9 +70,12 @@ public class MyBot : IChessBot
         return guess;
     }
     
-    double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
+    // Quiet: See https://en.wikipedia.org/wiki/Quiescence_search:
+    // If last move was a capture, search following capture moves to see if it really was a good captures.
+    double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove, bool quiet)
     {
-        if (depth == 0 || board.IsInCheckmate() || board.IsDraw())
+        quiet = quiet && depth <= 0;
+        if (quiet || depth <= -2 || board.IsInCheckmate() || board.IsDraw())
         {
             return evaluate();
         }
@@ -79,7 +83,7 @@ public class MyBot : IChessBot
         var ply = board.PlyCount;
 
         Span<Move> moves = stackalloc Move[256];
-        board.GetLegalMovesNonAlloc(ref moves);
+        board.GetLegalMovesNonAlloc(ref moves, quiet);
 
         // Shortcut for when there is only one move available (only keep it when we have tokens left).
         // If we implement any caching, don't cache this case, because it is not a real evaluation.
@@ -106,7 +110,7 @@ public class MyBot : IChessBot
             foreach (var move in moves)
             {
                 board.MakeMove(move);
-                var eval = minimax(depth - 1, false, alpha, beta, false);
+                var eval = minimax(depth - 1, false, alpha, beta, false, !move.IsCapture);
                 board.UndoMove(move);
                 alpha = Math.Max(alpha, eval);
                 if (eval > maxEval)
@@ -138,7 +142,7 @@ public class MyBot : IChessBot
             foreach (var move in moves)
             {
                 board.MakeMove(move);
-                var eval = minimax(depth - 1, true, alpha, beta, false);
+                var eval = minimax(depth - 1, true, alpha, beta, false, !move.IsCapture);
                 board.UndoMove(move);
                 beta = Math.Min(beta, eval);
                 if (eval < minEval)
