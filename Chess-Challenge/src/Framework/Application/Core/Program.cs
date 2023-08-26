@@ -116,22 +116,15 @@ namespace ChessChallenge.Application
 
 /* TODO
 How often are pieces/pawns defended / how many pieces/pawns get defended by own pieces/pawns?
-How many moves does oneself/opponent has in current position? <3 or so should cause problems (the less the better, maybe even quadratic?)
-Trade equal when up in material
 For easier training of all weights/scores: play against stockfish and/or use stockfish eval function as comparison?
-Train evaluation on whole games (against self, stockfish various levels) and also find a list of "interesting posotions" (there is 1 file of them in the repo?)
 Training: evaluation + next move (and how does stockfish like it)
-Eval: remaining time (vs opponent remaining time)
+Eval: remaining time (vs opponent remaining time)? Can we trick opponents into timeout?
 Rook wants to be aligned on king file: maybe this is implicit by "how many opponents am I attacking, even though pieces in the middle - weight how much own+opponent pieces/pawns are worth. On own consider to how many places they can move)
-Move search: look a moves in advance (remainingTime/500), take fist b moves that give best evaluation, look again c moves in advance. Do that cycle d times.
-Maybe b should not be fixed, but in a range that depends on the evaluation difference
 Time control: if there is enough eval benefit, stop early
 Disregard all moves that don't bring relevant benefits
-Passed pawns: high value
-Lower weight pawn moves of all but center pawns in first x moves
 But do not bring out queen early, even if it would have more movement
 Attacks on pieces/pawns near the king are more worth
-Store good lines, opponent probably plays one of them, then we already can start digging deeper
+Transposition table: Store good lines, opponent probably plays one of them, then we already can start digging deeper
  */
 // TODO https://en.wikipedia.org/wiki/Quiescence_search (search only capture after some depth)
 // TODO https://www.chessprogramming.org/Delta_Pruning (safety margin)

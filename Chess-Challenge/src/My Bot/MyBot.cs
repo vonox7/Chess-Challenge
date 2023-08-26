@@ -25,7 +25,7 @@ public class MyBot : IChessBot
         var depth = 8;
         var pieceCountSquare = BitboardHelper.GetNumberOfSetBits(board.BlackPiecesBitboard) * BitboardHelper.GetNumberOfSetBits(board.WhitePiecesBitboard);
         var averageOvershootFactor = overshootFactor.Sum() / 4;
-        while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 && depth > 3)
+        while (maxExpectedMoveDuration > timer.MillisecondsRemaining / 10 - 200 && depth > 3) // TODO -200 fixes timeout, which leads then to illegalmove in the next game
         {
             depth--;
             // "/ 100" matches roughly my local machine in release mode and https://github.com/SebLague/Chess-Challenge/issues/381. Local debug mode would be about "/ 10".
@@ -71,7 +71,7 @@ public class MyBot : IChessBot
     
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove)
     {
-        if (depth == 0 || board.IsInCheckmate() || board.IsDraw()) // TODO 3 cases different?
+        if (depth == 0 || board.IsInCheckmate() || board.IsDraw())
         {
             return evaluate();
         }
@@ -168,7 +168,7 @@ public class MyBot : IChessBot
     double evaluate()
     {
         // Midgame evaluation: evaluate(true) - evaluate(false). But also needed for endgame to find actual mate.
-        return evaluate(true) - evaluate(false); // TODO strategy-evaluate (e.g. divide/multiply by how many plys played)
+        return evaluate(true) - evaluate(false); // TODO favour equal trades when we are in the lead
     }
 
     double evaluate(bool white)
@@ -189,7 +189,7 @@ public class MyBot : IChessBot
                 var piece = pieceList[pieceIndex];
                 score += pieceValues[(int)piece.PieceType];
 
-                if (piece.IsPawn) // TODO should I check for passed pawn, is that with few tokens possible
+                if (piece.IsPawn)
                 {
                     // Make pawns move forward
                     var rank = piece.Square.Rank;
@@ -207,7 +207,6 @@ public class MyBot : IChessBot
                 // TODO try out this: score += Math.Log2(BitboardHelper.GetNumberOfSetBits(attacks));
                 score += 0.5 * BitboardHelper.GetNumberOfSetBits(attacks);
 
-                // TODO Make pieces protect other pieces 
                 // TODO Pinning
 
                 // Make pieces attacking/defending other pieces TODO same score for attack+defense?
@@ -215,7 +214,7 @@ public class MyBot : IChessBot
             }
         }
 
-        // TODO try out: We want to have a position where all pieces are defended (didn't help in the current situation)
+        // TODO try out make pieces protect other pieces: We want to have a position where all pieces are defended (didn't help in the current situation)
         // score -= 5 * BitboardHelper.GetNumberOfSetBits(undefendedPieces);
 
         // TODO favour early castle & castle rights
