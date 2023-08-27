@@ -7,7 +7,11 @@ public class MyBot : IChessBot
     private Move bestMove;
     private double bestMoveEval;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
-    private Transposition[] transpositions = new Transposition[1000000];
+    // Memory is padded, see https://learn.microsoft.com/en-us/cpp/c-language/padding-and-alignment-of-structure-members?view=msvc-170&redirectedfrom=MSDN.
+    // So when adding new fields to Transposition, check if we increase the amount of memory needed per Transposition struct for e.g. another 16 bytes.
+    // With just 1 ulong and 1 Move struct we need 16 bytes per struct (according to Rider memory analysis).
+    // We could also check the memory usage with https://github.com/SebLague/Chess-Challenge/pull/410.
+    private Transposition[] transpositions = new Transposition[15_000_000]; // 15MB * 16 bytes = 240MB, below the 256MB limit
     int transpositionHit; // #DEBUG
     int transpositionMiss; // #DEBUG
     struct Transposition
@@ -53,7 +57,7 @@ public class MyBot : IChessBot
         var guess = 0;
         
         // Check transposition table for previously good moves
-        var transposition = transpositions[board.ZobristKey % 1000000];
+        var transposition = transpositions[board.ZobristKey % 15_000_000];
         if (transposition.zobristKey == board.ZobristKey)
         {
             transpositionHit++; // #DEBUG 
@@ -123,11 +127,10 @@ public class MyBot : IChessBot
                 alpha = Math.Max(alpha, eval);
                 if (eval > maxEval)
                 {
-                    transpositions[board.ZobristKey % 1000000] = new Transposition
-                    {
-                        zobristKey = board.ZobristKey,
-                        bestMove = move
-                    };
+                    ref var transposition = ref transpositions[board.ZobristKey % 15_000_000];
+                    transposition.zobristKey = board.ZobristKey;
+                    transposition.bestMove = move;
+                    
                     maxEval = eval;
                     if (assignBestMove)
                     {
@@ -162,11 +165,10 @@ public class MyBot : IChessBot
                 beta = Math.Min(beta, eval);
                 if (eval < minEval)
                 {
-                    transpositions[board.ZobristKey % 1000000] = new Transposition
-                    {
-                        zobristKey = board.ZobristKey,
-                        bestMove = move
-                    };
+                    ref var transposition = ref transpositions[board.ZobristKey % 15_000_000];
+                    transposition.zobristKey = board.ZobristKey;
+                    transposition.bestMove = move;
+                    
                     minEval = eval;
                     if (assignBestMove)
                     {
