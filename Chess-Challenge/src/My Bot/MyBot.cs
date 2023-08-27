@@ -13,7 +13,7 @@ public class MyBot : IChessBot
     struct Transposition
     {
         public ulong zobristKey; // Store zobristKey to avoid hash collisions (not 100% perfect, but probably good enough)
-        public Move bestMove; // TODO figure out if caching bestMove actually does something
+        public Move bestMove; // TODO Do we want to store not only the single best move, but the best 2-3 moves?
         // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
     }
     
@@ -116,7 +116,9 @@ public class MyBot : IChessBot
             foreach (var move in moves)
             {
                 board.MakeMove(move);
-                var eval = minimax(depth - 1, false, alpha, beta, false, !move.IsCapture);
+                // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep
+                var eval = minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 0 : 1),
+                    false, alpha, beta, false, !move.IsCapture);
                 board.UndoMove(move);
                 alpha = Math.Max(alpha, eval);
                 if (eval > maxEval)
@@ -153,7 +155,9 @@ public class MyBot : IChessBot
             foreach (var move in moves)
             {
                 board.MakeMove(move);
-                var eval = minimax(depth - 1, true, alpha, beta, false, !move.IsCapture);
+                // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep
+                var eval = minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 0 : 1),
+                    true, alpha, beta, false, !move.IsCapture);
                 board.UndoMove(move);
                 beta = Math.Min(beta, eval);
                 if (eval < minEval)
