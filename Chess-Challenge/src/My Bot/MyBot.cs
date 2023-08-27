@@ -239,7 +239,7 @@ public class MyBot : IChessBot
         
         // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
         // TODO don't jump to endgame evaluation all at once, but gradually shift to it (so slight boost when we have 2 pieces left)
-        /*if (whitePieceCount < 2 || blackPieceCount < 2)
+        if (whitePieceCount < 2 || blackPieceCount < 2)
         {
             // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
             var whiteIsLoosing = whitePieceCount < blackPieceCount;
@@ -250,7 +250,7 @@ public class MyBot : IChessBot
             var kingDistance = Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) + Math.Abs(loosingKingSquare.File - winningKingSquare.File);
             // TODO 407/160 might be wrong (470 because centerDistanceOfLoosingKing is off by one, and whole scaling might be wrong when adding to our evaluate(bool) score)
             score += whiteBoardMultiplier * (470 * centerDistanceOfLoosingKing + 160 * (14 - kingDistance));
-        }*/
+        }
         
         return score;
     }
