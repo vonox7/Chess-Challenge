@@ -184,14 +184,7 @@ public class MyBot : IChessBot
             return minEval;
         }
     }
-
-    double evaluate()
-    {
-        // Midgame evaluation: evaluate(true) - evaluate(false). But also needed for endgame to find actual mate.
-        return evaluate(true) - evaluate(false); // TODO favour equal trades when we are in the lead
-    }
-
-    double evaluate(bool white)
+     double evaluate()
     {
         if (board.IsDraw())
         {
@@ -199,61 +192,66 @@ public class MyBot : IChessBot
         }
 
         var score = 0.0;
-        //var undefendedPieces = white ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
-
+        var whitePieceCount = 0;
+        var blackPieceCount = 0;
+        
+        // Midgame evaluation (but also needed for endgame to find actual mate)
         foreach (var pieceList in board.GetAllPieceLists())
         {
-            if (white != pieceList.IsWhitePieceList) continue;
             for (int pieceIndex = 0; pieceIndex < pieceList.Count; pieceIndex++)
             {
                 var piece = pieceList[pieceIndex];
-                score += pieceValues[(int)piece.PieceType];
+                if (pieceList.IsWhitePieceList) whitePieceCount++; else blackPieceCount++;
+                var whitePieceMultiplier = pieceList.IsWhitePieceList ? 1 : -1;
+                score += pieceValues[(int)piece.PieceType] * whitePieceMultiplier;
 
                 if (piece.IsPawn)
                 {
                     // Make pawns move forward
                     var rank = piece.Square.Rank;
-                    var ranksAwayFromPromotion = white ? rank : 7 - rank;
-                    score += ranksAwayFromPromotion;
+                    var ranksAwayFromPromotion = pieceList.IsWhitePieceList ? rank : 7 - rank;
+                    score += ranksAwayFromPromotion * whitePieceMultiplier;
                 } // TODO endgame evaluation: king in center vs side/top/bottom (or near other pieces, no matter of color): board weight + 1 center-weight
 
                 var attacks =
                     BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
-                //undefendedPieces &= ~attacks;
 
                 // Move pieces to places with much freedom TODO up to how much freedom is it relevant? bishop < 2 freedom = trapped = very bad
                 // TODO freedom is more important, should lead to moving pawn forward after castling
                 // TODO weight bei how "relevant" is attacking/protecting piece
                 // TODO try out this: score += Math.Log2(BitboardHelper.GetNumberOfSetBits(attacks));
-                score += 0.5 * BitboardHelper.GetNumberOfSetBits(attacks);
+                score += 0.5 * BitboardHelper.GetNumberOfSetBits(attacks) * whitePieceMultiplier;
 
                 // TODO Pinning
 
                 // Make pieces attacking/defending other pieces TODO same score for attack+defense?
-                score += 1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard);
+                score += 1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard) * whitePieceMultiplier;
             }
         }
-
-        // TODO try out make pieces protect other pieces: We want to have a position where all pieces are defended (didn't help in the current situation)
-        // score -= 5 * BitboardHelper.GetNumberOfSetBits(undefendedPieces);
-
-        // TODO favour early castle & castle rights
-
-        // Putting someone in check is quite often good
-        /*if (board.IsInCheck())
-        {
-            // TODO why is this +/-, and the other one below for IsInCheckmate() is -/+?
-            score += board.IsWhiteToMove == white ? 70 : -70;
-        }*/
         
         // Checkmate is of course always best. But a checkmate with a queen-promotion is considered best (because we might have overlooked an escape route that might have been possible with a rook-promotion)
+        var whiteBoardMultiplier = board.IsWhiteToMove ? -1 : 1;
         if (board.IsInCheckmate())
         {
             // Add/Subtract plyCount to prefer mate in fewer moves. Multiply by more than any e.g. pawn->queen promotion while taking opponent queen would bring
-            var mateInXboost = board.PlyCount * 10000;
-            score += board.IsWhiteToMove == white ? -100000000.0 + mateInXboost : 100000000.0 - mateInXboost;
+            score += whiteBoardMultiplier * (100000000.0 - board.PlyCount * 10000);
         }
-
+        
+        // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
+        // TODO don't jump to endgame evaluation all at once, but gradually shift to it (so slight boost when we have 2 pieces left)
+        /*if (whitePieceCount < 2 || blackPieceCount < 2)
+        {
+            // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
+            var whiteIsLoosing = whitePieceCount < blackPieceCount;
+            var loosingKingSquare = board.GetKingSquare(whiteIsLoosing);
+            var winningKingSquare = board.GetKingSquare(!whiteIsLoosing);
+            
+            var centerDistanceOfLoosingKing = Math.Abs(loosingKingSquare.Rank - 3.5) + Math.Abs(loosingKingSquare.File - 3.5);
+            var kingDistance = Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) + Math.Abs(loosingKingSquare.File - winningKingSquare.File);
+            // TODO 407/160 might be wrong (470 because centerDistanceOfLoosingKing is off by one, and whole scaling might be wrong when adding to our evaluate(bool) score)
+            score += whiteBoardMultiplier * (470 * centerDistanceOfLoosingKing + 160 * (14 - kingDistance));
+        }*/
+        
         return score;
     }
 }
