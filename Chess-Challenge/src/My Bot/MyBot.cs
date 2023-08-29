@@ -20,6 +20,8 @@ public class MyBot : IChessBot
         public Move bestMove; // TODO Do we want to store not only the single best move, but the best 2-3 moves?
         // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
     }
+    long totalMovesSearched; // #DEBUG
+    long totalMovesEvaluated; // #DEBUG
     
     // See https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Heuristic_improvements
     // Lets hope that we never have more than 1000 moves in a game
@@ -41,11 +43,13 @@ public class MyBot : IChessBot
             if (Double.IsNaN(minimax(++depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true, false))) break;
         }
         
-        Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, transpositionHits={3,4:F2}",  // #DEBUG
+        Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, transpositionHits={3,4:F2}, traversed={4}, evaluated={5}, evalCacheHits={6,4:F2}",  // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < -100 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
-            (double) transpositionHit / (transpositionHit + transpositionMiss)); // #DEBUG
+            (double) transpositionHit / (transpositionHit + transpositionMiss),
+            (totalMovesSearched - totalMovesEvaluated) / 1000 / 1000.0 + "M", // #DEBUG
+            totalMovesEvaluated / 1000 / 1000.0 + "M"); // #DEBUG
         
         return bestMove;
     }
@@ -84,6 +88,7 @@ public class MyBot : IChessBot
     // If last move was a capture, search following capture moves to see if it really was a good captures.
     double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove, bool quiet)
     {
+        totalMovesSearched++; // #DEBUG
         quiet = quiet && depth <= 0;
         if (quiet || depth <= -2 || board.IsInCheckmate() || board.IsDraw())
         {
@@ -192,6 +197,8 @@ public class MyBot : IChessBot
     }
      double evaluate()
     {
+        totalMovesEvaluated++; // #DEBUG
+        
         if (board.IsDraw())
         {
             return 0;
@@ -257,7 +264,7 @@ public class MyBot : IChessBot
             // TODO 407/160 might be wrong (470 because centerDistanceOfLoosingKing is off by one, and whole scaling might be wrong when adding to our evaluate(bool) score)
             score += whiteBoardMultiplier * (470 * centerDistanceOfLoosingKing + 160 * (14 - kingDistance));
         }
-        
+
         return score;
     }
 }
