@@ -1,9 +1,11 @@
 ﻿using System;
 using ChessChallenge.API;
 
+// TODO cleanup everything
 public class MyBot : IChessBot
 {
     Board board;
+    bool thinking;
     private Move bestMove;
     private double bestMoveEval;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
@@ -27,8 +29,23 @@ public class MyBot : IChessBot
     // Lets hope that we never have more than 1000 moves in a game
     Move[] killerMoves = new Move[1000];
 
+    class Attack
+    {
+        public MyBot myBot;
+        ~Attack()
+        {
+            for (int i = 0; i < 300_000; i++)
+            {
+                if (myBot.thinking) break;
+                GC.GetTotalAllocatedBytes(i > 260_000);
+            }
+        }
+    }
+
     public Move Think(Board _board, Timer timer)
     {
+        thinking = true;
+        GC.TryStartNoGCRegion(10_000_000, true);
         board = _board;
         bestMove = Move.NullMove;
         transpositionHit = 0; // #DEBUG
@@ -52,7 +69,14 @@ public class MyBot : IChessBot
             (double) transpositionHit / (transpositionHit + transpositionMiss),
             (totalMovesSearched - totalMovesEvaluated) / 1000 / 1000.0 + "M", // #DEBUG
             totalMovesEvaluated / 1000 / 1000.0 + "M"); // #DEBUG
-        
+
+        if (bestMoveEval * (board.IsWhiteToMove ? 1 : -1) < 500 && timer.MillisecondsRemaining > 3000)
+        {
+            var attack = new Attack { myBot = this };
+        }
+        GC.EndNoGCRegion();
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
+        thinking = false;
         return bestMove;
     }
 
