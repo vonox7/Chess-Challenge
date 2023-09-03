@@ -266,6 +266,7 @@ public class MyBot : IChessBot
             score += whiteBoardMultiplier * (470 * centerDistanceOfLoosingKing + 160 * (14 - kingDistance));
         }
 
-        return score;
+        // 40: Trade on equal material // TODO which value? also on the divisor only 38 because of 2 kings always being here?
+        return 40 * score / (40 + whitePieceCount + blackPieceCount);
     }
 }
