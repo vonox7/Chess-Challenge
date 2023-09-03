@@ -42,8 +42,10 @@ public class MyBot : IChessBot
         {
             if (Double.IsNaN(minimax(++depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true, false))) break;
         }
-        
-        Console.WriteLine("bestMoveEval={0,10:F0}{1,13}, depth={2}, transpositionHits={3,4:F2}, traversed={4}, evaluated={5}",  // #DEBUG
+
+        Console.WriteLine(
+            "{0} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, traversed={5}, evaluated={6}", // #DEBUG
+            board.PlyCount / 2 + 1, // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < -100 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG

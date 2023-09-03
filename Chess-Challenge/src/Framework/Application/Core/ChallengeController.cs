@@ -294,6 +294,7 @@ namespace ChessChallenge.Application
 
                 string pgn = PGNCreator.CreatePGN(board, result, GetPlayerName(PlayerWhite), GetPlayerName(PlayerBlack));
                 pgns.AppendLine(pgn);
+                Log("https://www.chess.com/analysis?pgn=" + Uri.EscapeDataString(pgn));
 
                 // If 2 bots playing each other, start next game automatically.
                 if (PlayerWhite.IsBot && PlayerBlack.IsBot)
