@@ -121,7 +121,8 @@ public class MyBot : IChessBot
 
         if (whiteToMinimize)
         {
-            var maxEval = Double.NegativeInfinity; // TODO extract function for both cases to spare code?
+            // TODO extract function for both cases to spare code, see https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework
+            var maxEval = Double.NegativeInfinity;
             foreach (var move in moves)
             {
                 board.MakeMove(move);
