@@ -38,7 +38,8 @@ public class MyBot : IChessBot
         var depth = 0;
         // TODO figure out when to stop. Each additional depth-round takes ~5 times as much as the previous one.
         // So when assuming that we want to spend ~1/20th of the remaining time in the round, multiply by 5*20=100.
-        while (timer.MillisecondsElapsedThisTurn * 200 < timer.MillisecondsRemaining)
+        // Max 30 depth, so we don't end up in a loop on forced checkmate
+        while (timer.MillisecondsElapsedThisTurn * 200 < timer.MillisecondsRemaining && depth < 30)
         {
             if (Double.IsNaN(minimax(++depth, -1000000000.0, 1000000000.0, true))) break;
         }
@@ -87,11 +88,9 @@ public class MyBot : IChessBot
         return guess;
     }
     
-    // Quiet: See https://en.wikipedia.org/wiki/Quiescence_search:
-    // If last move was a capture, search following capture moves to see if it really was a good captures.
     double minimax(double depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
     {
-        double bestEval = Double.NegativeInfinity;
+        double bestEval = -1000000000.0;
         totalMovesSearched++; // #DEBUG
         
         if (board.IsDraw())
