@@ -7,20 +7,17 @@ public class MyBot : IChessBot
     private Move bestMove;
     private double bestMoveEval;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
-    // Memory is padded, see https://learn.microsoft.com/en-us/cpp/c-language/padding-and-alignment-of-structure-members?view=msvc-170&redirectedfrom=MSDN.
-    // So when adding new fields to Transposition, check if we increase the amount of memory needed per Transposition struct for e.g. another 16 bytes.
-    // With just 1 ulong and 1 Move struct we need 16 bytes per struct (according to Rider memory analysis).
-    // We could also check the memory usage with https://github.com/SebLague/Chess-Challenge/pull/410.
-    private Transposition[] transpositions = new Transposition[7_500_000]; // TODO update 15MB * 16 bytes = 240MB, below the 256MB limit
+    // 15MB * 16 bytes = 240MB, below the 256MB limit, checked via Marshal.SizeOf<Transposition>()
+    private Transposition[] transpositions = new Transposition[15_000_000];
     int transpositionHit; // #DEBUG
     int transpositionMiss; // #DEBUG
     struct Transposition // TODO Check memory: Move -> ushort (Move.RawValue) and depth double -> float
     {
-        public ulong zobristKey; // Store zobristKey to avoid hash collisions (not 100% perfect, but probably good enough)
-        public Move bestMove; // TODO Do we want to store not only the single best move, but the best 2-3 moves?
-        public ushort flag;
-        public double eval, depth;
-        // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
+        public ulong zobristKey; // 8 byte: Store zobristKey to avoid hash collisions (not 100% perfect, but probably good enough)
+        public ushort bestMoveRawValue; // 2 bytes
+        public sbyte flag; // 1 byte
+        public sbyte depth; // 1 byte
+        public float eval; // 4 bytes
     }
     long totalMovesSearched; // #DEBUG
     long toalSearchEndNodes; // #DEBUG
@@ -40,10 +37,11 @@ public class MyBot : IChessBot
         var depth = 0;
         // TODO figure out when to stop. Each additional depth-round takes ~5 times as much as the previous one.
         // So when assuming that we want to spend ~1/20th of the remaining time in the round, multiply by 5*20=100.
-        // Max 30 depth, so we don't end up in a loop on forced checkmate
-        while (timer.MillisecondsElapsedThisTurn * 200 < timer.MillisecondsRemaining && depth < 30)
+        // Max 25 depth, so we don't end up in a loop on forced checkmate. Also 5*25=125, and sbyte can hold up to 127.
+        while (timer.MillisecondsElapsedThisTurn * 200 < timer.MillisecondsRemaining && depth < 25)
         {
-            if (Double.IsNaN(minimax(++depth, -1000000000.0, 1000000000.0, true))) break;
+            // 1 depth is represented as 5*depth, so we can also do smaller depth-steps on critical positions
+            if (Double.IsNaN(minimax(5 * ++depth, -1000000000.0, 1000000000.0, true))) break;
         }
 
         bestMoveEval *= board.IsWhiteToMove ? 1 : -1; // #DEBUG
@@ -67,12 +65,12 @@ public class MyBot : IChessBot
         var guess = 0;
         
         // Check transposition table for previously good moves
-        var transposition = transpositions[board.ZobristKey % 7_500_000];
+        var transposition = transpositions[board.ZobristKey % 15_000_000];
         if (transposition.zobristKey == board.ZobristKey)
         {
             transpositionHit++; // #DEBUG 
             // TODO checking for bestMove is the only thing we want to do here?
-            if (move == transposition.bestMove) guess -= 1000;
+            if (move.RawValue == transposition.bestMoveRawValue) guess -= 1000;
         }
         else // #DEBUG 
         { // #DEBUG 
@@ -90,7 +88,7 @@ public class MyBot : IChessBot
         return guess;
     }
     
-    double minimax(double depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
+    double minimax(int depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
     {
         double bestEval = -1000000000 - depth;
         totalMovesSearched++; // #DEBUG
@@ -101,7 +99,7 @@ public class MyBot : IChessBot
             return 0;
         }
 
-        ref var transposition = ref transpositions[board.ZobristKey % 7_500_000];
+        ref var transposition = ref transpositions[board.ZobristKey % 15_000_000];
         if (!assignBestMove && transposition.depth >= depth && transposition.zobristKey == board.ZobristKey)
         {
             // TODO is all this where we set the flag really correct? see https://web.archive.org/web/20071031100051/http://www.brucemo.com/compchess/programming/hashing.htm
@@ -110,11 +108,12 @@ public class MyBot : IChessBot
             if (transposition.flag == 2 && transposition.eval >= beta) return beta; // BETA
         }
         var eval = evaluate();
+        if (depth <= -100) return eval; // Don't over-evaluate certain positions (this also avoids underflow of sbyte)
         
         // Null move pruning
         if (depth >= 3 && allowNull && eval >= beta && board.TrySkipTurn())
         {
-            double nullMoveEval = -minimax(depth - 3, -beta, -beta + 1, false, false);
+            double nullMoveEval = -minimax(depth - 15, -beta, -beta + 1, false, false);
             board.UndoSkipTurn();
             if (nullMoveEval >= beta) return nullMoveEval;
         }
@@ -126,8 +125,8 @@ public class MyBot : IChessBot
                 toalSearchEndNodes++; // #DEBUG
                 
                 transposition.zobristKey = board.ZobristKey;
-                transposition.eval = bestEval;
-                transposition.depth = depth;
+                transposition.eval = (float) bestEval;
+                transposition.depth = (sbyte) depth;
                 transposition.flag = 0;
                 // We don't set the bestMove here. Keep it the way it was because it might not be bad (TODO or reset to NullMove)
                 
@@ -163,7 +162,7 @@ public class MyBot : IChessBot
         {
             board.MakeMove(move);
             // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep (but not forever, so otherwise reduce by 0.2)
-            eval = -minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 0.2 : 1),
+            eval = -minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 1 : 5),
                 -beta, -alpha, false);
             board.UndoMove(move);
             alpha = Math.Max(alpha, eval);
@@ -174,9 +173,9 @@ public class MyBot : IChessBot
                 
                 // Update transposition as early as possible, to let it find on subsequent searches
                 transposition.zobristKey = board.ZobristKey;
-                transposition.eval = bestEval;
-                transposition.depth = depth;
-                transposition.bestMove = move;
+                transposition.eval = (float) bestEval;
+                transposition.depth = (sbyte) depth;
+                transposition.bestMoveRawValue = move.RawValue;
                 transposition.flag = 1;
                 
                 if (assignBestMove)
