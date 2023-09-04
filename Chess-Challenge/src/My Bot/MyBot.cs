@@ -88,7 +88,7 @@ public class MyBot : IChessBot
     
     // Quiet: See https://en.wikipedia.org/wiki/Quiescence_search:
     // If last move was a capture, search following capture moves to see if it really was a good captures.
-    double minimax(int depth, double alpha, double beta, bool assignBestMove)
+    double minimax(int depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
     {
         double bestEval = Double.NegativeInfinity;
         totalMovesSearched++; // #DEBUG
@@ -99,6 +99,15 @@ public class MyBot : IChessBot
             return 0;
         }
         var eval = evaluate();
+        
+        // Null move pruning
+        if (depth >= 3 && allowNull && eval >= beta && board.TrySkipTurn())
+        {
+            double nullMoveEval = -minimax(depth - 3, -beta, -beta + 1, false, false);
+            board.UndoSkipTurn();
+            if (nullMoveEval >= beta) return nullMoveEval;
+        }
+        
         if (depth <= 0)
         {
             bestEval = eval;
