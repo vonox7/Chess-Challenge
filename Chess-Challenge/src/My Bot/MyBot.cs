@@ -40,7 +40,7 @@ public class MyBot : IChessBot
         // So when assuming that we want to spend ~1/20th of the remaining time in the round, multiply by 5*20=100.
         while (timer.MillisecondsElapsedThisTurn * 200 < timer.MillisecondsRemaining)
         {
-            if (Double.IsNaN(minimax(++depth, board.IsWhiteToMove, -1000000000.0, 1000000000.0, true, false))) break;
+            if (Double.IsNaN(minimax(++depth, -1000000000.0, 1000000000.0, true, false))) break;
         }
 
         Console.WriteLine(
@@ -88,13 +88,15 @@ public class MyBot : IChessBot
     
     // Quiet: See https://en.wikipedia.org/wiki/Quiescence_search:
     // If last move was a capture, search following capture moves to see if it really was a good captures.
-    double minimax(int depth, bool whiteToMinimize, double alpha, double beta, bool assignBestMove, bool quiet)
+    double minimax(int depth, double alpha, double beta, bool assignBestMove, bool quiet)
     {
+        var eval = evaluate();
+        double bestEval = Double.NegativeInfinity;
         totalMovesSearched++; // #DEBUG
         quiet = quiet && depth <= 0;
         if (quiet || depth <= -2 || board.IsInCheckmate() || board.IsDraw())
         {
-            return evaluate();
+            return eval;
         }
 
         var ply = board.PlyCount;
@@ -121,32 +123,30 @@ public class MyBot : IChessBot
         }
         movePotential.Sort(moves);
 
-        if (whiteToMinimize)
+        foreach (var move in moves)
         {
-            // TODO extract function for both cases to spare code, see https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework
-            var maxEval = Double.NegativeInfinity;
-            foreach (var move in moves)
+            board.MakeMove(move);
+            // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep
+            eval = -minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 0 : 1),
+                -beta, -alpha, false, !move.IsCapture);
+            board.UndoMove(move);
+            alpha = Math.Max(alpha, eval);
+            
+            if (eval > bestEval)
             {
-                board.MakeMove(move);
-                // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep
-                var eval = minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 0 : 1),
-                    false, alpha, beta, false, !move.IsCapture);
-                board.UndoMove(move);
-                alpha = Math.Max(alpha, eval);
-                if (eval > maxEval)
+                bestEval = eval;
+                
+                ref var transposition = ref transpositions[board.ZobristKey % 15_000_000];
+                transposition.zobristKey = board.ZobristKey;
+                transposition.bestMove = move;
+                
+                if (assignBestMove)
                 {
-                    ref var transposition = ref transpositions[board.ZobristKey % 15_000_000];
-                    transposition.zobristKey = board.ZobristKey;
-                    transposition.bestMove = move;
-                    
-                    maxEval = eval;
-                    if (assignBestMove)
-                    {
-                        bestMove = move;
-                        bestMoveEval = eval; // #DEBUG
-                    }
+                    bestMove = move;
+                    bestMoveEval = eval; // #DEBUG
                 }
-
+                
+                alpha = Math.Max(alpha, bestEval);
                 if (beta <= alpha)
                 {
                     // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
@@ -157,46 +157,9 @@ public class MyBot : IChessBot
                     break;
                 }
             }
-
-            return maxEval;
         }
-        else
-        {
-            var minEval = Double.PositiveInfinity;
-            foreach (var move in moves)
-            {
-                board.MakeMove(move);
-                // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep
-                var eval = minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 0 : 1),
-                    true, alpha, beta, false, !move.IsCapture);
-                board.UndoMove(move);
-                beta = Math.Min(beta, eval);
-                if (eval < minEval)
-                {
-                    ref var transposition = ref transpositions[board.ZobristKey % 15_000_000];
-                    transposition.zobristKey = board.ZobristKey;
-                    transposition.bestMove = move;
-                    
-                    minEval = eval;
-                    if (assignBestMove)
-                    {
-                        bestMove = move;
-                        bestMoveEval = eval; // #DEBUG
-                    }
-                }
 
-                if (beta <= alpha)
-                {
-                    if (!move.IsCapture)
-                    {
-                        killerMoves[ply] = move;
-                    }
-                    break;
-                }
-            }
-
-            return minEval;
-        }
+        return bestEval;
     }
      double evaluate()
     {
@@ -269,6 +232,6 @@ public class MyBot : IChessBot
         }
 
         // 40: Trade on equal material // TODO which value? also on the divisor only 38 because of 2 kings always being here?
-        return 40 * score / (40 + whitePieceCount + blackPieceCount);
+        return 40 * score / (40 + whitePieceCount + blackPieceCount) * -whiteBoardMultiplier;
     }
 }
