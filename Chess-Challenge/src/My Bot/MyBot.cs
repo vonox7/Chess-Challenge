@@ -21,7 +21,7 @@ public class MyBot : IChessBot
         // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
     }
     long totalMovesSearched; // #DEBUG
-    long totalMovesEvaluated; // #DEBUG
+    long toalSearchEndNodes; // #DEBUG
     
     // See https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Heuristic_improvements
     // Lets hope that we never have more than 1000 moves in a game
@@ -40,18 +40,18 @@ public class MyBot : IChessBot
         // So when assuming that we want to spend ~1/20th of the remaining time in the round, multiply by 5*20=100.
         while (timer.MillisecondsElapsedThisTurn * 200 < timer.MillisecondsRemaining)
         {
-            if (Double.IsNaN(minimax(++depth, -1000000000.0, 1000000000.0, true, false))) break;
+            if (Double.IsNaN(minimax(++depth, -1000000000.0, 1000000000.0, true))) break;
         }
 
         Console.WriteLine(
-            "{0} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, traversed={5}, evaluated={6}", // #DEBUG
+            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, traversed={5}, evaluated={6}", // #DEBUG
             board.PlyCount / 2 + 1, // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < -100 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
             (double) transpositionHit / (transpositionHit + transpositionMiss),
-            (totalMovesSearched - totalMovesEvaluated) / 1000 / 1000.0 + "M", // #DEBUG
-            totalMovesEvaluated / 1000 / 1000.0 + "M"); // #DEBUG
+            (totalMovesSearched - toalSearchEndNodes) / 1000 / 1000.0 + "M", // #DEBUG
+            toalSearchEndNodes / 1000 / 1000.0 + "M"); // #DEBUG
         
         return bestMove;
     }
@@ -88,21 +88,30 @@ public class MyBot : IChessBot
     
     // Quiet: See https://en.wikipedia.org/wiki/Quiescence_search:
     // If last move was a capture, search following capture moves to see if it really was a good captures.
-    double minimax(int depth, double alpha, double beta, bool assignBestMove, bool quiet)
+    double minimax(int depth, double alpha, double beta, bool assignBestMove)
     {
-        var eval = evaluate();
         double bestEval = Double.NegativeInfinity;
         totalMovesSearched++; // #DEBUG
-        quiet = quiet && depth <= 0;
-        if (quiet || depth <= -2 || board.IsInCheckmate() || board.IsDraw())
+        
+        if (board.IsDraw())
         {
-            return eval;
+            toalSearchEndNodes++; // #DEBUG
+            return 0;
         }
-
+        var eval = evaluate();
+        if (depth <= 0)
+        {
+            bestEval = eval;
+            if (bestEval >= beta) {
+                toalSearchEndNodes++; // #DEBUG
+                return bestEval; // eval seems to be quiet, so stop here
+            }
+            alpha = Math.Max(alpha, bestEval);
+        }
         var ply = board.PlyCount;
 
         Span<Move> moves = stackalloc Move[256];
-        board.GetLegalMovesNonAlloc(ref moves, quiet);
+        board.GetLegalMovesNonAlloc(ref moves, depth <= 0);
 
         // Shortcut for when there is only one move available (only keep it when we have tokens left).
         // If we implement any caching, don't cache this case, because it is not a real evaluation.
@@ -128,7 +137,7 @@ public class MyBot : IChessBot
             board.MakeMove(move);
             // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep
             eval = -minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 0 : 1),
-                -beta, -alpha, false, !move.IsCapture);
+                -beta, -alpha, false);
             board.UndoMove(move);
             alpha = Math.Max(alpha, eval);
             
@@ -136,7 +145,7 @@ public class MyBot : IChessBot
             {
                 bestEval = eval;
                 
-                ref var transposition = ref transpositions[board.ZobristKey % 15_000_000];
+                ref var transposition = ref transpositions[board.ZobristKey % 15_000_000]; // TODO move out from loop
                 transposition.zobristKey = board.ZobristKey;
                 transposition.bestMove = move;
                 
@@ -163,13 +172,6 @@ public class MyBot : IChessBot
     }
      double evaluate()
     {
-        totalMovesEvaluated++; // #DEBUG
-        
-        if (board.IsDraw())
-        {
-            return 0;
-        }
-
         var score = 0.0;
         var whitePieceCount = 0;
         var blackPieceCount = 0;
