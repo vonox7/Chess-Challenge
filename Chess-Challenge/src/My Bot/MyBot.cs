@@ -11,13 +11,15 @@ public class MyBot : IChessBot
     // So when adding new fields to Transposition, check if we increase the amount of memory needed per Transposition struct for e.g. another 16 bytes.
     // With just 1 ulong and 1 Move struct we need 16 bytes per struct (according to Rider memory analysis).
     // We could also check the memory usage with https://github.com/SebLague/Chess-Challenge/pull/410.
-    private Transposition[] transpositions = new Transposition[15_000_000]; // 15MB * 16 bytes = 240MB, below the 256MB limit
+    private Transposition[] transpositions = new Transposition[7_500_000]; // TODO update 15MB * 16 bytes = 240MB, below the 256MB limit
     int transpositionHit; // #DEBUG
     int transpositionMiss; // #DEBUG
-    struct Transposition
+    struct Transposition // TODO Check memory: Move -> ushort (Move.RawValue) and depth double -> float
     {
         public ulong zobristKey; // Store zobristKey to avoid hash collisions (not 100% perfect, but probably good enough)
         public Move bestMove; // TODO Do we want to store not only the single best move, but the best 2-3 moves?
+        public ushort flag;
+        public double eval, depth;
         // TODO if adding more things like caching evaluation, also remember to check first the ply for which the eval was cached (?)
     }
     long totalMovesSearched; // #DEBUG
@@ -65,7 +67,7 @@ public class MyBot : IChessBot
         var guess = 0;
         
         // Check transposition table for previously good moves
-        var transposition = transpositions[board.ZobristKey % 15_000_000];
+        var transposition = transpositions[board.ZobristKey % 7_500_000];
         if (transposition.zobristKey == board.ZobristKey)
         {
             transpositionHit++; // #DEBUG 
@@ -98,6 +100,15 @@ public class MyBot : IChessBot
             toalSearchEndNodes++; // #DEBUG
             return 0;
         }
+
+        ref var transposition = ref transpositions[board.ZobristKey % 7_500_000];
+        if (!assignBestMove && transposition.depth >= depth && transposition.zobristKey == board.ZobristKey)
+        {
+            // TODO is all this where we set the flag really correct? see https://web.archive.org/web/20071031100051/http://www.brucemo.com/compchess/programming/hashing.htm
+            if (transposition.flag == 0) return transposition.eval; // EXACT
+            if (transposition.flag == 1 && transposition.eval <= alpha) return alpha; // ALPHA
+            if (transposition.flag == 2 && transposition.eval >= beta) return beta; // BETA
+        }
         var eval = evaluate();
         
         // Null move pruning
@@ -113,6 +124,13 @@ public class MyBot : IChessBot
             bestEval = eval;
             if (bestEval >= beta) {
                 toalSearchEndNodes++; // #DEBUG
+                
+                transposition.zobristKey = board.ZobristKey;
+                transposition.eval = bestEval;
+                transposition.depth = depth;
+                transposition.flag = 0;
+                // We don't set the bestMove here. Keep it the way it was because it might not be bad (TODO or reset to NullMove)
+                
                 return bestEval; // eval seems to be quiet, so stop here
             }
             alpha = Math.Max(alpha, bestEval);
@@ -154,9 +172,12 @@ public class MyBot : IChessBot
             {
                 bestEval = eval;
                 
-                ref var transposition = ref transpositions[board.ZobristKey % 15_000_000]; // TODO move out from loop
+                // Update transposition as early as possible, to let it find on subsequent searches
                 transposition.zobristKey = board.ZobristKey;
+                transposition.eval = bestEval;
+                transposition.depth = depth;
                 transposition.bestMove = move;
+                transposition.flag = 1;
                 
                 if (assignBestMove)
                 {
@@ -167,6 +188,7 @@ public class MyBot : IChessBot
                 alpha = Math.Max(alpha, bestEval);
                 if (beta <= alpha)
                 {
+                    transposition.flag = 2;
                     // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
                     if (!move.IsCapture)
                     {
