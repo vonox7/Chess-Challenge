@@ -43,6 +43,7 @@ public class MyBot : IChessBot
             if (Double.IsNaN(minimax(++depth, -1000000000.0, 1000000000.0, true))) break;
         }
 
+        bestMoveEval *= board.IsWhiteToMove ? 1 : -1; // #DEBUG
         Console.WriteLine(
             "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, traversed={5}, evaluated={6}", // #DEBUG
             board.PlyCount / 2 + 1, // #DEBUG
@@ -88,7 +89,7 @@ public class MyBot : IChessBot
     
     // Quiet: See https://en.wikipedia.org/wiki/Quiescence_search:
     // If last move was a capture, search following capture moves to see if it really was a good captures.
-    double minimax(int depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
+    double minimax(double depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
     {
         double bestEval = Double.NegativeInfinity;
         totalMovesSearched++; // #DEBUG
@@ -144,8 +145,8 @@ public class MyBot : IChessBot
         foreach (var move in moves)
         {
             board.MakeMove(move);
-            // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep
-            eval = -minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 0 : 1),
+            // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep (but not forever, so otherwise reduce by 0.2)
+            eval = -minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 0.2 : 1),
                 -beta, -alpha, false);
             board.UndoMove(move);
             alpha = Math.Max(alpha, eval);
