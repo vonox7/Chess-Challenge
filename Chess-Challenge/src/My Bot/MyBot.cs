@@ -90,7 +90,7 @@ public class MyBot : IChessBot
     
     double minimax(double depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
     {
-        double bestEval = -1000000000.0;
+        double bestEval = -1000000000 - depth;
         totalMovesSearched++; // #DEBUG
         
         if (board.IsDraw())
