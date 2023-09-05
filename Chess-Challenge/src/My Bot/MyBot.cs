@@ -39,10 +39,9 @@ public class MyBot : IChessBot
 
         // Search via iterative deepening
         var depth = 0;
-        // TODO figure out when to stop. Each additional depth-round takes ~5 times as much as the previous one.
-        // So when assuming that we want to spend ~1/20th of the remaining time in the round, multiply by 5*20=100.
+        // Check here for the timer, so we don't start searching when we have almost time left
         // Max 25 depth, so we don't end up in a loop on forced checkmate. Also 5*25=125, and sbyte can hold up to 127.
-        while (timer.MillisecondsElapsedThisTurn * 200 < timer.MillisecondsRemaining && depth < 25)
+        while (timer.MillisecondsElapsedThisTurn * 100 < timer.MillisecondsRemaining && depth < 25)
         {
             // 1 depth is represented as 5*depth, so we can also do smaller depth-steps on critical positions
             if (Double.IsNaN(minimax(5 * ++depth, -1000000000.0, 1000000000.0, true))) break;
@@ -97,7 +96,8 @@ public class MyBot : IChessBot
     
     double minimax(int depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
     {
-        if (timer.MillisecondsElapsedThisTurn * 20 > timer.MillisecondsRemaining) cancel = true;
+        // Check inside the search also for the timer to cancel a search if it took really too long
+        if (timer.MillisecondsElapsedThisTurn * 15 > timer.MillisecondsRemaining) cancel = true;
         if (cancel) return Double.NaN;
         double bestEval = -1000000000 - depth;
         totalMovesSearched++; // #DEBUG
