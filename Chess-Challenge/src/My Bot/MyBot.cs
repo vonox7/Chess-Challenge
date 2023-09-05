@@ -64,10 +64,8 @@ public class MyBot : IChessBot
         return bestMove;
     }
 
-    // TODO endgame: if we found mate, stop searching. With 2 queens on the board and mate in 1, we often search for > 1 second
     int getMovePotential(Move move)
     {
-        // TODO figure out if 1000/-10/-1/-3/-1/-5 (and no scaling on capture-movePieceType) is a good guess
         var guess = 0;
         
         // Check transposition table for previously good moves
@@ -75,7 +73,6 @@ public class MyBot : IChessBot
         if (transposition.zobristKey == board.ZobristKey)
         {
             transpositionHit++; // #DEBUG 
-            // TODO checking for bestMove is the only thing we want to do here?
             if (move.RawValue == transposition.bestMoveRawValue) guess -= 1000;
         }
         else // #DEBUG 
@@ -137,7 +134,7 @@ public class MyBot : IChessBot
                 transposition.eval = (float) bestEval;
                 transposition.depth = (sbyte) depth;
                 transposition.flag = 0;
-                // We don't set the bestMove here. Keep it the way it was because it might not be bad (TODO or reset to NullMove)
+                // We don't set the bestMove here. Keep it the way it was because it might not be bad
                 
                 return bestEval; // eval seems to be quiet, so stop here
             }
@@ -231,20 +228,14 @@ public class MyBot : IChessBot
                     var rank = piece.Square.Rank;
                     var ranksAwayFromPromotion = pieceList.IsWhitePieceList ? rank : 7 - rank;
                     score += ranksAwayFromPromotion * whitePieceMultiplier;
-                } // TODO endgame evaluation: king in center vs side/top/bottom (or near other pieces, no matter of color): board weight + 1 center-weight
+                }
 
-                var attacks =
-                    BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
+                var attacks = BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
 
-                // Move pieces to places with much freedom TODO up to how much freedom is it relevant? bishop < 2 freedom = trapped = very bad
-                // TODO freedom is more important, should lead to moving pawn forward after castling
-                // TODO weight bei how "relevant" is attacking/protecting piece
-                // TODO try out this: score += Math.Log2(BitboardHelper.GetNumberOfSetBits(attacks));
+                // Move pieces to places with much freedom
                 score += 0.5 * BitboardHelper.GetNumberOfSetBits(attacks) * whitePieceMultiplier;
 
-                // TODO Pinning
-
-                // Make pieces attacking/defending other pieces TODO same score for attack+defense?
+                // Make pieces attacking/defending other pieces
                 score += 1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard) * whitePieceMultiplier;
             }
         }
