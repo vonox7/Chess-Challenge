@@ -8,7 +8,7 @@ public class MyBot : IChessBot
     bool cancel;
     Move bestMove;
     double bestMoveEval;
-    int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
+    int[] pieceValues = { 0, 100, 300, 310, 500, 900, 10000 };
     // 15MB * 16 bytes = 240MB, below the 256MB limit, checked via Marshal.SizeOf<Transposition>()
     Transposition[] transpositions = new Transposition[15_000_000];
     int transpositionHit; // #DEBUG
