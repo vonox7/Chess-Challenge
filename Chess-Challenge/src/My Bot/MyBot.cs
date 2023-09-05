@@ -4,19 +4,18 @@ using ChessChallenge.API;
 public class MyBot : IChessBot
 {
     Board board;
-    private Move bestMove;
-    private double bestMoveEval;
+    Move bestMove;
+    double bestMoveEval;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
     // 15MB * 16 bytes = 240MB, below the 256MB limit, checked via Marshal.SizeOf<Transposition>()
-    private Transposition[] transpositions = new Transposition[15_000_000];
+    Transposition[] transpositions = new Transposition[15_000_000];
     int transpositionHit; // #DEBUG
     int transpositionMiss; // #DEBUG
-    struct Transposition // TODO Check memory: Move -> ushort (Move.RawValue) and depth double -> float
+    struct Transposition
     {
         public ulong zobristKey; // 8 byte: Store zobristKey to avoid hash collisions (not 100% perfect, but probably good enough)
         public ushort bestMoveRawValue; // 2 bytes
-        public sbyte flag; // 1 byte
-        public sbyte depth; // 1 byte
+        public sbyte flag, depth; // 2 x 1 byte
         public float eval; // 4 bytes
     }
     long totalMovesSearched; // #DEBUG
