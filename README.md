@@ -3,11 +3,12 @@ This is a chess bot implementation of the [Chess-Challenge project by SebLague](
 The goal of the competition is to create a small chess bot (in C#) using a provided chess framework.
 
 ## Bot Brain Capacity
-Currently this chess bot uses 939/1024 C# code tokens.
+Currently this chess bot uses 989/1024 C# code tokens.
 
 ## Search
 * Iterative deepening
- * Time management: Checked after each iteration
+ * Time management: Checked after each iteration to not start a new iteration when the time is almost up to not start a new search
+ * Time management: Check during search if time is really up
 * Negamax search
  * With alpha-beta pruning
  * With quiescence search

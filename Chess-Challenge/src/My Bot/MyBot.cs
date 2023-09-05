@@ -4,6 +4,8 @@ using ChessChallenge.API;
 public class MyBot : IChessBot
 {
     Board board;
+    Timer timer;
+    bool cancel;
     Move bestMove;
     double bestMoveEval;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 }; // TODO which values?
@@ -25,13 +27,16 @@ public class MyBot : IChessBot
     // Lets hope that we never have more than 1000 moves in a game
     Move[] killerMoves = new Move[1000];
 
-    public Move Think(Board _board, Timer timer)
+    public Move Think(Board _board, Timer _timer)
     {
         board = _board;
+        timer = _timer;
         bestMove = Move.NullMove;
+        cancel = false;
+        var prevBestMove = bestMove;
         transpositionHit = 0; // #DEBUG
         transpositionMiss = 0; // #DEBUG
-        
+
         // Search via iterative deepening
         var depth = 0;
         // TODO figure out when to stop. Each additional depth-round takes ~5 times as much as the previous one.
@@ -41,7 +46,10 @@ public class MyBot : IChessBot
         {
             // 1 depth is represented as 5*depth, so we can also do smaller depth-steps on critical positions
             if (Double.IsNaN(minimax(5 * ++depth, -1000000000.0, 1000000000.0, true))) break;
+            prevBestMove = bestMove;
         }
+
+        if (cancel) bestMove = prevBestMove;
 
         bestMoveEval *= board.IsWhiteToMove ? 1 : -1; // #DEBUG
         Console.WriteLine(
@@ -89,6 +97,8 @@ public class MyBot : IChessBot
     
     double minimax(int depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
     {
+        if (timer.MillisecondsElapsedThisTurn * 20 > timer.MillisecondsRemaining) cancel = true;
+        if (cancel) return Double.NaN;
         double bestEval = -1000000000 - depth;
         totalMovesSearched++; // #DEBUG
         
@@ -163,6 +173,7 @@ public class MyBot : IChessBot
             // Extension: Getting a check is quite often so unstable, that we need to check 1 more move deep (but not forever, so otherwise reduce by 0.2)
             eval = -minimax(depth - (board.IsInCheck() ? 1 : 5), -beta, -alpha, false);
             board.UndoMove(move);
+            if (cancel) return Double.NaN;
             alpha = Math.Max(alpha, eval);
             
             if (eval > bestEval)
