@@ -161,9 +161,8 @@ public class MyBot : IChessBot
         foreach (var move in moves)
         {
             board.MakeMove(move);
-            // Capturing the queen or getting a check is quite often so unstable, that we need to check 1 more move deep (but not forever, so otherwise reduce by 0.2)
-            eval = -minimax(depth - ((move.IsCapture && move.CapturePieceType == PieceType.Queen) || board.IsInCheck() ? 1 : 5),
-                -beta, -alpha, false);
+            // Extension: Getting a check is quite often so unstable, that we need to check 1 more move deep (but not forever, so otherwise reduce by 0.2)
+            eval = -minimax(depth - (board.IsInCheck() ? 1 : 5), -beta, -alpha, false);
             board.UndoMove(move);
             alpha = Math.Max(alpha, eval);
             
