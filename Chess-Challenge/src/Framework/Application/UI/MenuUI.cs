@@ -27,6 +27,8 @@ namespace ChessChallenge.Application
             }
             if (NextButtonInRow("MyBot vs EvilBot", ref buttonPos, spacing, buttonSize))
             {
+                //controller.fastForward = true;
+                //Settings.RunBotsOnSeparateThread = false;
                 controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.EvilBot);
             }
 
@@ -68,6 +70,12 @@ namespace ChessChallenge.Application
             if (NextButtonInRow("Exit (ESC)", ref buttonPos, spacing, buttonSize))
             {
                 Environment.Exit(0);
+            }
+            if (NextButtonInRow("Fast forward", ref buttonPos, spacing, buttonSize))
+            {
+                controller.fastForward = !controller.fastForward;
+                if(controller.fastForward) Settings.RunBotsOnSeparateThread = false;
+                else Settings.RunBotsOnSeparateThread = true;
             }
 
             bool NextButtonInRow(string name, ref Vector2 pos, float spacingY, Vector2 size)
