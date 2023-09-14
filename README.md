@@ -3,7 +3,7 @@ This is a chess bot implementation of the [Chess-Challenge project by SebLague](
 The goal of the competition is to create a small chess bot (in C#) using a provided chess framework.
 
 ## Bot Brain Capacity
-Currently this chess bot uses 989/1024 C# code tokens.
+Currently this chess bot uses 990/1024 C# code tokens.
 
 ## Search
 * Iterative deepening
@@ -22,7 +22,7 @@ Currently this chess bot uses 989/1024 C# code tokens.
  * Promotions
  * Castles
  * Captures (MVV/LVA)
-* Null move pruning
+* Null move pruning (but not during endgames, there I figured out that NMP might skip a mate)
 * Single move optimization: If there is only one move, don't search
 * Search extension: When in check, search one ply deeper (with limit to avoid infinite recursion)
 

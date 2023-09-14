@@ -113,11 +113,76 @@ public class MyBot : IChessBot
             if (transposition.flag == 1 && transposition.eval <= alpha) return alpha; // ALPHA
             if (transposition.flag == 2 && transposition.eval >= beta) return beta; // BETA
         }
-        var eval = evaluate();
+        
+        
+        ////////////////////////////////////////
+        // Start of inlined evaluate function // (inlining reduces tokens and lets us access more than 1 computed value without additional token overhead)
+        ////////////////////////////////////////
+        var score = 0.0;
+        var whitePieceCount = 0;
+        var blackPieceCount = 0;
+        
+        // Midgame evaluation (but also needed for endgame to find actual mate)
+        foreach (var pieceList in board.GetAllPieceLists())
+        {
+            for (int pieceIndex = 0; pieceIndex < pieceList.Count; pieceIndex++)
+            {
+                var piece = pieceList[pieceIndex];
+                if (pieceList.IsWhitePieceList) whitePieceCount++; else blackPieceCount++;
+                var whitePieceMultiplier = pieceList.IsWhitePieceList ? 1 : -1;
+                score += pieceValues[(int)piece.PieceType] * whitePieceMultiplier;
+
+                if (piece.IsPawn)
+                {
+                    // Make pawns move forward
+                    var rank = piece.Square.Rank;
+                    var ranksAwayFromPromotion = pieceList.IsWhitePieceList ? rank : 7 - rank;
+                    score += ranksAwayFromPromotion * whitePieceMultiplier;
+                }
+
+                var attacks = BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
+
+                // Move pieces to places with much freedom
+                score += 0.5 * BitboardHelper.GetNumberOfSetBits(attacks) * whitePieceMultiplier;
+
+                // Make pieces attacking/defending other pieces
+                score += 1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard) * whitePieceMultiplier;
+            }
+        }
+        
+        // Checkmate is of course always best. But a checkmate with a queen-promotion is considered best (because we might have overlooked an escape route that might have been possible with a rook-promotion)
+        var whiteBoardMultiplier = board.IsWhiteToMove ? -1 : 1;
+        if (board.IsInCheckmate())
+        {
+            // Add/Subtract plyCount to prefer mate in fewer moves. Multiply by more than any e.g. pawn->queen promotion while taking opponent queen would bring
+            score += whiteBoardMultiplier * (100000000.0 - board.PlyCount * 10000);
+        }
+        
+        // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
+        if (whitePieceCount < 2 || blackPieceCount < 2)
+        {
+            // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
+            var whiteIsLoosing = whitePieceCount < blackPieceCount;
+            var loosingKingSquare = board.GetKingSquare(whiteIsLoosing);
+            var winningKingSquare = board.GetKingSquare(!whiteIsLoosing);
+            
+            var centerDistanceOfLoosingKing = Math.Abs(loosingKingSquare.Rank - 3.5) + Math.Abs(loosingKingSquare.File - 3.5);
+            var kingDistance = Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) + Math.Abs(loosingKingSquare.File - winningKingSquare.File);
+            // 47/16 scaling factor is trimmed to not make blunders in "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75" 
+            score += whiteBoardMultiplier * (47 * centerDistanceOfLoosingKing + 16 * (14 - kingDistance));
+        }
+
+        // 40: Trade on equal material // TODO which value? also on the divisor only 38 because of 2 kings always being here?
+        var eval = 40 * score / (40 + whitePieceCount + blackPieceCount) * -whiteBoardMultiplier;
+        //////////////////////////////////////
+        // End of inlined evaluate function //
+        //////////////////////////////////////
+        
+        
         if (depth <= -100) return eval; // Don't over-evaluate certain positions (this also avoids underflow of sbyte)
         
-        // Null move pruning
-        if (depth >= 3 && allowNull && eval >= beta && board.TrySkipTurn())
+        // Null move pruning (but not in endgame, there we might skip a mate, e.g. on "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75"
+        if (depth >= 3 && allowNull && eval >= beta && whitePieceCount > 2 && blackPieceCount > 2 && board.TrySkipTurn())
         {
             double nullMoveEval = -minimax(depth - 15, -beta, -beta + 1, false, false);
             board.UndoSkipTurn();
@@ -205,65 +270,5 @@ public class MyBot : IChessBot
         }
 
         return bestEval;
-    }
-     double evaluate()
-    {
-        var score = 0.0;
-        var whitePieceCount = 0;
-        var blackPieceCount = 0;
-        
-        // Midgame evaluation (but also needed for endgame to find actual mate)
-        foreach (var pieceList in board.GetAllPieceLists())
-        {
-            for (int pieceIndex = 0; pieceIndex < pieceList.Count; pieceIndex++)
-            {
-                var piece = pieceList[pieceIndex];
-                if (pieceList.IsWhitePieceList) whitePieceCount++; else blackPieceCount++;
-                var whitePieceMultiplier = pieceList.IsWhitePieceList ? 1 : -1;
-                score += pieceValues[(int)piece.PieceType] * whitePieceMultiplier;
-
-                if (piece.IsPawn)
-                {
-                    // Make pawns move forward
-                    var rank = piece.Square.Rank;
-                    var ranksAwayFromPromotion = pieceList.IsWhitePieceList ? rank : 7 - rank;
-                    score += ranksAwayFromPromotion * whitePieceMultiplier;
-                }
-
-                var attacks = BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
-
-                // Move pieces to places with much freedom
-                score += 0.5 * BitboardHelper.GetNumberOfSetBits(attacks) * whitePieceMultiplier;
-
-                // Make pieces attacking/defending other pieces
-                score += 1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard) * whitePieceMultiplier;
-            }
-        }
-        
-        // Checkmate is of course always best. But a checkmate with a queen-promotion is considered best (because we might have overlooked an escape route that might have been possible with a rook-promotion)
-        var whiteBoardMultiplier = board.IsWhiteToMove ? -1 : 1;
-        if (board.IsInCheckmate())
-        {
-            // Add/Subtract plyCount to prefer mate in fewer moves. Multiply by more than any e.g. pawn->queen promotion while taking opponent queen would bring
-            score += whiteBoardMultiplier * (100000000.0 - board.PlyCount * 10000);
-        }
-        
-        // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
-        // TODO don't jump to endgame evaluation all at once, but gradually shift to it (so slight boost when we have 2 pieces left)
-        if (whitePieceCount < 2 || blackPieceCount < 2)
-        {
-            // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
-            var whiteIsLoosing = whitePieceCount < blackPieceCount;
-            var loosingKingSquare = board.GetKingSquare(whiteIsLoosing);
-            var winningKingSquare = board.GetKingSquare(!whiteIsLoosing);
-            
-            var centerDistanceOfLoosingKing = Math.Abs(loosingKingSquare.Rank - 3.5) + Math.Abs(loosingKingSquare.File - 3.5);
-            var kingDistance = Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) + Math.Abs(loosingKingSquare.File - winningKingSquare.File);
-            // TODO 407/160 might be wrong (470 because centerDistanceOfLoosingKing is off by one, and whole scaling might be wrong when adding to our evaluate(bool) score)
-            score += whiteBoardMultiplier * (470 * centerDistanceOfLoosingKing + 160 * (14 - kingDistance));
-        }
-
-        // 40: Trade on equal material // TODO which value? also on the divisor only 38 because of 2 kings always being here?
-        return 40 * score / (40 + whitePieceCount + blackPieceCount) * -whiteBoardMultiplier;
     }
 }
