@@ -108,7 +108,7 @@ public class MyBot : IChessBot
         ref var transposition = ref transpositions[board.ZobristKey % 15_000_000];
         if (!assignBestMove && transposition.depth >= depth && transposition.zobristKey == board.ZobristKey)
         {
-            // TODO is all this where we set the flag really correct? see https://web.archive.org/web/20071031100051/http://www.brucemo.com/compchess/programming/hashing.htm
+            // See https://web.archive.org/web/20071031100051/http://www.brucemo.com/compchess/programming/hashing.htm
             if (transposition.flag == 0) return transposition.eval; // EXACT
             if (transposition.flag == 1 && transposition.eval <= alpha) return alpha; // ALPHA
             if (transposition.flag == 2 && transposition.eval >= beta) return beta; // BETA
@@ -158,6 +158,7 @@ public class MyBot : IChessBot
             score += whiteBoardMultiplier * (100000000.0 - board.PlyCount * 10000);
         }
         
+        // TODO: rook vs horse endgame is always draw --> subtract 200 from rook. Also for some others? With this we could trick other bots into bad moves that don't account for that. Is there also an endgame where less material is better?
         // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
         if (whitePieceCount < 2 || blackPieceCount < 2)
         {
@@ -172,7 +173,7 @@ public class MyBot : IChessBot
             score += whiteBoardMultiplier * (3 * centerDistanceOfLoosingKing + 14 - kingDistance);
         }
 
-        // 40: Trade on equal material // TODO which value? also on the divisor only 38 because of 2 kings always being here?
+        // 40: Trade on equal material
         var eval = 40 * score / (40 + whitePieceCount + blackPieceCount) * -whiteBoardMultiplier;
         //////////////////////////////////////
         // End of inlined evaluate function //
