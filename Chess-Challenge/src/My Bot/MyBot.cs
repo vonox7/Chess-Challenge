@@ -13,6 +13,7 @@ public class MyBot : IChessBot
     Transposition[] transpositions = new Transposition[15_000_000];
     int transpositionHit; // #DEBUG
     int transpositionMiss; // #DEBUG
+    private double[] prevEvals = new Double[1000]; // #DEBUG
     struct Transposition
     {
         public ulong zobristKey; // 8 byte: Store zobristKey to avoid hash collisions (not 100% perfect, but probably good enough)
@@ -21,7 +22,6 @@ public class MyBot : IChessBot
         public float eval; // 4 bytes
     }
     long totalMovesSearched; // #DEBUG
-    long toalSearchEndNodes; // #DEBUG
     
     // See https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Heuristic_improvements
     // Lets hope that we never have more than 1000 moves in a game
@@ -49,17 +49,27 @@ public class MyBot : IChessBot
         }
 
         if (cancel) bestMove = prevBestMove;
+        
+        prevEvals[board.PlyCount / 2] = bestMoveEval; // #DEBUG
+        if (board.PlyCount > 20) // #DEBUG
+        { // #DEBUG
+            var prevEval = prevEvals[board.PlyCount / 2 - 5]; // #DEBUG
+            if (!Double.IsNaN(prevEval) && !Double.IsNaN(bestMoveEval) && (prevEval - bestMoveEval) * (board.IsWhiteToMove ? 1 : -1) > 1000 && // #DEBUG
+                ((prevEval < 10 && bestMoveEval > -10) || (prevEval > -10 && bestMoveEval < 10))) // #DEBUG
+            { // #DEBUG
+                Console.WriteLine("WARNING: Eval changed by more than 1000 points in 5 moves!"); // #DEBUG
+            } // #DEBUG
+        } // #DEBUG
 
         bestMoveEval *= board.IsWhiteToMove ? 1 : -1; // #DEBUG
         Console.WriteLine(
-            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, traversed={5}, evaluated={6}", // #DEBUG
+            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, searched={5}", // #DEBUG
             board.PlyCount / 2 + 1, // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < -100 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
             (double) transpositionHit / (transpositionHit + transpositionMiss),
-            (totalMovesSearched - toalSearchEndNodes) / 1000 / 1000.0 + "M", // #DEBUG
-            toalSearchEndNodes / 1000 / 1000.0 + "M"); // #DEBUG
+            totalMovesSearched / 1000 / 1000.0 + "M"); // #DEBUG
         
         return bestMove;
     }
@@ -85,7 +95,7 @@ public class MyBot : IChessBot
         // Queen promotions are best, but in edge cases knight promotions could also work.
         // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
         if (move.IsPromotion) guess -= (int)move.PromotionPieceType;
-        if (move.IsCastles) guess -= 1;
+        if (move.IsCastles) guess -= 1; // TODO remove?
         if (move.IsCapture) guess -= (int)move.CapturePieceType - (int)move.MovePieceType + 5;
 
         return guess;
@@ -99,11 +109,7 @@ public class MyBot : IChessBot
         double bestEval = -1000000000 - depth;
         totalMovesSearched++; // #DEBUG
         
-        if (board.IsDraw())
-        {
-            toalSearchEndNodes++; // #DEBUG
-            return 0;
-        }
+        if (board.IsDraw()) return 0;
 
         ref var transposition = ref transpositions[board.ZobristKey % 15_000_000];
         if (!assignBestMove && transposition.depth >= depth && transposition.zobristKey == board.ZobristKey)
@@ -125,6 +131,7 @@ public class MyBot : IChessBot
         // Midgame evaluation (but also needed for endgame to find actual mate)
         foreach (var pieceList in board.GetAllPieceLists())
         {
+            // TODO save tokens by multiplying only once with whitePieceMultiplier?
             for (int pieceIndex = 0; pieceIndex < pieceList.Count; pieceIndex++)
             {
                 var piece = pieceList[pieceIndex];
@@ -132,13 +139,8 @@ public class MyBot : IChessBot
                 var whitePieceMultiplier = pieceList.IsWhitePieceList ? 1 : -1;
                 score += pieceValues[(int)piece.PieceType] * whitePieceMultiplier;
 
-                if (piece.IsPawn)
-                {
-                    // Make pawns move forward
-                    var rank = piece.Square.Rank;
-                    var ranksAwayFromPromotion = pieceList.IsWhitePieceList ? rank : 7 - rank;
-                    score += ranksAwayFromPromotion * whitePieceMultiplier;
-                }
+                // Make pawns move forward
+                if (piece.IsPawn) score += (pieceList.IsWhitePieceList ? piece.Square.Rank : 7 - piece.Square.Rank) * whitePieceMultiplier;
 
                 var attacks = BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
 
@@ -152,25 +154,24 @@ public class MyBot : IChessBot
         
         // Checkmate is of course always best. But a checkmate with a queen-promotion is considered best (because we might have overlooked an escape route that might have been possible with a rook-promotion)
         var whiteBoardMultiplier = board.IsWhiteToMove ? -1 : 1;
-        if (board.IsInCheckmate())
-        {
-            // Add/Subtract plyCount to prefer mate in fewer moves. Multiply by more than any e.g. pawn->queen promotion while taking opponent queen would bring
-            score += whiteBoardMultiplier * (100000000.0 - board.PlyCount * 10000);
-        }
         
-        // TODO: rook vs horse endgame is always draw --> subtract 200 from rook. Also for some others? With this we could trick other bots into bad moves that don't account for that. Is there also an endgame where less material is better?
-        // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation TODO reduce Tokens, this is quite a lot of code just to fix rook/queen endgame
+        // Add/Subtract plyCount to prefer mate in fewer moves. Multiply by more than any e.g. pawn->queen promotion while taking opponent queen would bring
+        if (board.IsInCheckmate()) score += whiteBoardMultiplier * (100000000.0 - board.PlyCount * 10000);
+        
+        // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
         if (whitePieceCount < 2 || blackPieceCount < 2)
         {
             // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
             var whiteIsLoosing = whitePieceCount < blackPieceCount;
             var loosingKingSquare = board.GetKingSquare(whiteIsLoosing);
             var winningKingSquare = board.GetKingSquare(!whiteIsLoosing);
-            
-            var centerDistanceOfLoosingKing = Math.Abs(loosingKingSquare.Rank - 3.5) + Math.Abs(loosingKingSquare.File - 3.5);
-            var kingDistance = Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) + Math.Abs(loosingKingSquare.File - winningKingSquare.File);
+
+            var centerDistanceOfLoosingKing = 
+                Math.Abs(loosingKingSquare.Rank - 3.5) + Math.Abs(loosingKingSquare.File - 3.5);
             // Scaling factor is trimmed to not make blunders in "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75" or "8/1K6/6p1/5k2/R3n3/8/8/8 w - - 4 86"
-            score += whiteBoardMultiplier * (3 * centerDistanceOfLoosingKing + 14 - kingDistance);
+            score += whiteBoardMultiplier * (3 * centerDistanceOfLoosingKing + 14 -
+                                             Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) +
+                                             Math.Abs(loosingKingSquare.File - winningKingSquare.File));
         }
 
         // 40: Trade on equal material
@@ -194,8 +195,6 @@ public class MyBot : IChessBot
         {
             bestEval = eval;
             if (bestEval >= beta) {
-                toalSearchEndNodes++; // #DEBUG
-                
                 transposition.zobristKey = board.ZobristKey;
                 transposition.eval = (float) bestEval;
                 transposition.depth = (sbyte) depth;
@@ -224,10 +223,7 @@ public class MyBot : IChessBot
         // Optimize via ab-pruning: first check moves that are more likely to be good
         Span<int> movePotential = stackalloc int[moves.Length];
         int moveIndex = 0;
-        foreach (var move in moves)
-        {
-            movePotential[moveIndex++] = getMovePotential(move);
-        }
+        foreach (var move in moves) movePotential[moveIndex++] = getMovePotential(move);
         movePotential.Sort(moves);
 
         foreach (var move in moves)
@@ -261,10 +257,7 @@ public class MyBot : IChessBot
                 {
                     transposition.flag = 2;
                     // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
-                    if (!move.IsCapture)
-                    {
-                        killerMoves[ply] = move;
-                    }
+                    if (!move.IsCapture) killerMoves[ply] = move;
                     break;
                 }
             }

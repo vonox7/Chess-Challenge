@@ -3,7 +3,7 @@ This is a chess bot implementation of the [Chess-Challenge project by SebLague](
 The goal of the competition is to create a small chess bot (in C#) using a provided chess framework.
 
 ## Bot Brain Capacity
-Currently this chess bot uses 990/1024 C# code tokens.
+Currently this chess bot uses 975/1024 C# code tokens. Due to the goal of token minimization, some of the code is not very readable (e.g. all functions & variables are inlined wherever possible).
 
 ## Search
 * Iterative deepening
