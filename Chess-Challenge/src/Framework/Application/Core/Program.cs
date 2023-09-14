@@ -31,8 +31,6 @@ namespace ChessChallenge.Application
 
             ChallengeController controller = new();
             
-            // TODO controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.EvilBot);
-
             while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
@@ -111,19 +109,3 @@ namespace ChessChallenge.Application
 
 
 }
-
-
-
-/* TODO
-How often are pieces/pawns defended / how many pieces/pawns get defended by own pieces/pawns?
-For easier training of all weights/scores: play against stockfish and/or use stockfish eval function as comparison?
-Training: evaluation + next move (and how does stockfish like it)
-Eval: remaining time (vs opponent remaining time)? Can we trick opponents into timeout?
-Rook wants to be aligned on king file: maybe this is implicit by "how many opponents am I attacking, even though pieces in the middle - weight how much own+opponent pieces/pawns are worth. On own consider to how many places they can move)
-Time control: if there is enough eval benefit, stop early
-Disregard all moves that don't bring relevant benefits
-But do not bring out queen early, even if it would have more movement
-Attacks on pieces/pawns near the king are more worth
-Transposition table: Store good lines, opponent probably plays one of them, then we already can start digging deeper
- */
-// TODO https://www.chessprogramming.org/Delta_Pruning (safety margin)

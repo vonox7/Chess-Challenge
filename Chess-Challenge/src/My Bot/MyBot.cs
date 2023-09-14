@@ -1,6 +1,11 @@
 ﻿using System;
 using ChessChallenge.API;
 
+/*
+TODO eval: How often are pieces/pawns defended / how many pieces/pawns get defended by own pieces/pawns?
+TODO eval: Attacks on pieces/pawns near the king are more worth
+TODO search: https://www.chessprogramming.org/Delta_Pruning (safety margin)
+ */
 public class MyBot : IChessBot
 {
     Board board;
@@ -95,7 +100,6 @@ public class MyBot : IChessBot
         // Queen promotions are best, but in edge cases knight promotions could also work.
         // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
         if (move.IsPromotion) guess -= (int)move.PromotionPieceType;
-        if (move.IsCastles) guess -= 1; // TODO remove?
         if (move.IsCapture) guess -= (int)move.CapturePieceType - (int)move.MovePieceType + 5;
 
         return guess;
