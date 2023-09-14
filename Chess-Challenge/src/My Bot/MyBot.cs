@@ -69,7 +69,7 @@ public class MyBot : IChessBot
             bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < -100 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
             (double) transpositionHit / (transpositionHit + transpositionMiss),
-            totalMovesSearched / 1000 / 1000.0 + "M"); // #DEBUG
+            totalMovesSearched / 1_000_000.0 + "M"); // #DEBUG
         
         return bestMove;
     }
@@ -127,28 +127,25 @@ public class MyBot : IChessBot
         var score = 0.0;
         var whitePieceCount = 0;
         var blackPieceCount = 0;
-        
+      
         // Midgame evaluation (but also needed for endgame to find actual mate)
         foreach (var pieceList in board.GetAllPieceLists())
         {
-            // TODO save tokens by multiplying only once with whitePieceMultiplier?
             for (int pieceIndex = 0; pieceIndex < pieceList.Count; pieceIndex++)
             {
                 var piece = pieceList[pieceIndex];
+                var pieceSquare = piece.Square;
                 if (pieceList.IsWhitePieceList) whitePieceCount++; else blackPieceCount++;
-                var whitePieceMultiplier = pieceList.IsWhitePieceList ? 1 : -1;
-                score += pieceValues[(int)piece.PieceType] * whitePieceMultiplier;
+                var attacks = BitboardHelper.GetPieceAttacks(piece.PieceType, pieceSquare, board, pieceList.IsWhitePieceList);
 
-                // Make pawns move forward
-                if (piece.IsPawn) score += (pieceList.IsWhitePieceList ? piece.Square.Rank : 7 - piece.Square.Rank) * whitePieceMultiplier;
-
-                var attacks = BitboardHelper.GetPieceAttacks(piece.PieceType, piece.Square, board, pieceList.IsWhitePieceList);
-
-                // Move pieces to places with much freedom
-                score += 0.5 * BitboardHelper.GetNumberOfSetBits(attacks) * whitePieceMultiplier;
-
-                // Make pieces attacking/defending other pieces
-                score += 1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard) * whitePieceMultiplier;
+                score += (pieceValues[(int)piece.PieceType] +
+                          // Make pawns move forward
+                          (piece.IsPawn ? pieceList.IsWhitePieceList ? pieceSquare.Rank : 7 - pieceSquare.Rank : 0) +
+                          // Move pieces to places with much freedom
+                          0.5 * BitboardHelper.GetNumberOfSetBits(attacks) +
+                          // Make pieces attacking/defending other pieces
+                          1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard))
+                         * (pieceList.IsWhitePieceList ? 1 : -1);
             }
         }
         
