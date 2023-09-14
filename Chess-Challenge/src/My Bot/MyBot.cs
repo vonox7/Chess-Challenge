@@ -169,7 +169,7 @@ public class MyBot : IChessBot
             var centerDistanceOfLoosingKing = Math.Abs(loosingKingSquare.Rank - 3.5) + Math.Abs(loosingKingSquare.File - 3.5);
             var kingDistance = Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) + Math.Abs(loosingKingSquare.File - winningKingSquare.File);
             // Scaling factor is trimmed to not make blunders in "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75" or "8/1K6/6p1/5k2/R3n3/8/8/8 w - - 4 86"
-            score += whiteBoardMultiplier * (3 * centerDistanceOfLoosingKing + (14 - kingDistance));
+            score += whiteBoardMultiplier * (3 * centerDistanceOfLoosingKing + 14 - kingDistance);
         }
 
         // 40: Trade on equal material // TODO which value? also on the divisor only 38 because of 2 kings always being here?
