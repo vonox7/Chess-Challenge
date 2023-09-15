@@ -212,7 +212,8 @@ public class MyBot : IChessBot
         var ply = board.PlyCount;
 
         Span<Move> moves = stackalloc Move[256];
-        board.GetLegalMovesNonAlloc(ref moves, depth <= 0);
+        // On "r7/1b4B1/kp1r1PQP/p3bB2/P2p2R1/5qP1/2R4K/8 w - - 0 58" with depth=5 we make a blunder if we wouldn't test for check here
+        board.GetLegalMovesNonAlloc(ref moves, depth <= 0 && !board.IsInCheck());
 
         // Shortcut for when there is only one move available (only keep it when we have tokens left).
         // If we implement any caching, don't cache this case, because it is not a real evaluation.
