@@ -5,6 +5,7 @@ using ChessChallenge.API;
 TODO eval: How often are pieces/pawns defended / how many pieces/pawns get defended by own pieces/pawns?
 TODO eval: Attacks on pieces/pawns near the king are more worth
 TODO search: https://www.chessprogramming.org/Delta_Pruning (safety margin)
+TODO: one bot-variation with GC attack
  */
 public class MyBot : IChessBot
 {
@@ -68,17 +69,18 @@ public class MyBot : IChessBot
 
         bestMoveEval *= board.IsWhiteToMove ? 1 : -1; // #DEBUG
         Console.WriteLine(
-            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, searched={5}", // #DEBUG
+            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, searched={5:F2}M", // #DEBUG
             board.PlyCount / 2 + 1, // #DEBUG
             bestMoveEval, // #DEBUG
-            bestMoveEval > 100 ? " (white wins)" : (bestMoveEval < -100 ? " (black wins)" : ""), //#DEBUG
+            bestMoveEval > 50 ? " (white wins)" : (bestMoveEval < -50 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
             (double) transpositionHit / (transpositionHit + transpositionMiss),
-            totalMovesSearched / 1_000_000.0 + "M"); // #DEBUG
+            totalMovesSearched / 1_000_000.0); // #DEBUG
         
         return bestMove;
     }
 
+    // TODO inline this function to save tokens
     int getMovePotential(Move move)
     {
         var guess = 0;
@@ -187,6 +189,7 @@ public class MyBot : IChessBot
         // Null move pruning (but not in endgame, there we might skip a mate, e.g. on "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75"
         if (depth >= 3 && allowNull && eval >= beta && whitePieceCount > 2 && blackPieceCount > 2 && board.TrySkipTurn())
         {
+            // depth - 15 is essentially skipping 3 depth-levels (due to depth - 5 in the other minimax call)
             double nullMoveEval = -minimax(depth - 15, -beta, -beta + 1, false, false);
             board.UndoSkipTurn();
             if (nullMoveEval >= beta) return nullMoveEval;
