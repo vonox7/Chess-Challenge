@@ -10,7 +10,8 @@ TODO: one bot-variation with GC attack
 public class MyBot : IChessBot
 {
     Board board;
-    Timer timer;
+    static Timer timer;
+    static bool attack;
     bool cancel;
     Move bestMove;
     double bestMoveEval;
@@ -28,6 +29,20 @@ public class MyBot : IChessBot
         public float eval; // 4 bytes
     }
     long totalMovesSearched; // #DEBUG
+
+    class Attack
+    {
+        ~Attack()
+        {
+            var start = timer.MillisecondsElapsedThisTurn;
+            while (attack)
+            {
+                var passedTime = timer.MillisecondsElapsedThisTurn - start;
+                if (passedTime > timer.OpponentMillisecondsRemaining) break;
+                GC.GetTotalAllocatedBytes(passedTime > 5 && passedTime % 1000 > 0);
+            }
+        }
+    }
     
     // See https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Heuristic_improvements
     // Lets hope that we never have more than 1000 moves in a game
@@ -35,6 +50,7 @@ public class MyBot : IChessBot
 
     public Move Think(Board _board, Timer _timer)
     {
+        attack = false;
         board = _board;
         timer = _timer;
         bestMove = Move.NullMove;
@@ -69,14 +85,19 @@ public class MyBot : IChessBot
 
         bestMoveEval *= board.IsWhiteToMove ? 1 : -1; // #DEBUG
         Console.WriteLine(
-            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, searched={5:F2}M", // #DEBUG
+            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, searched={5:F2}M, time: {6:F1} / {7:F1}", // #DEBUG
             board.PlyCount / 2 + 1, // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 50 ? " (white wins)" : (bestMoveEval < -50 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
-            (double) transpositionHit / (transpositionHit + transpositionMiss),
-            totalMovesSearched / 1_000_000.0); // #DEBUG
-        
+            (double) transpositionHit / (transpositionHit + transpositionMiss), // #DEBUG
+            totalMovesSearched / 1_000_000.0, // #DEBUG
+            timer.MillisecondsRemaining / 1000.0, // #DEBUG
+            timer.OpponentMillisecondsRemaining / 1000.0); // #DEBUG
+
+        new Attack();
+        GC.Collect(999, GCCollectionMode.Forced, false);
+        attack = true;
         return bestMove;
     }
 
@@ -235,6 +256,7 @@ public class MyBot : IChessBot
         {
             board.MakeMove(move);
             // Extension: Getting a check is quite often so unstable, that we need to check 1 more move deep (but not forever, so otherwise reduce by 0.2)
+            // TODO extension when moves.Count == 1
             eval = -minimax(depth - (board.IsInCheck() ? 1 : 5), -beta, -alpha, false);
             board.UndoMove(move);
             if (cancel) return Double.NaN;
