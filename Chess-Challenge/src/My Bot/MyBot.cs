@@ -96,8 +96,9 @@ public class MyBot : IChessBot
         { // #DEBUG 
             transpositionMiss++; // #DEBUG 
         } // #DEBUG 
+        
+        guess -= historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index];
 
-        if (move == killerMoves[board.PlyCount]) guess -= 10;
         if (move == killerMoves[board.PlyCount]) guess -= 900_000;
 
         // Queen promotions are best, but in edge cases knight promotions could also work.
