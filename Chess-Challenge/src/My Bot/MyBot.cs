@@ -90,7 +90,7 @@ public class MyBot : IChessBot
         if (transposition.zobristKey == board.ZobristKey)
         {
             transpositionHit++; // #DEBUG 
-            if (move.RawValue == transposition.bestMoveRawValue) guess -= 1000;
+            if (move.RawValue == transposition.bestMoveRawValue) guess -= 100_000_000;
         }
         else // #DEBUG 
         { // #DEBUG 
@@ -98,11 +98,12 @@ public class MyBot : IChessBot
         } // #DEBUG 
 
         if (move == killerMoves[board.PlyCount]) guess -= 10;
+        if (move == killerMoves[board.PlyCount]) guess -= 900_000;
 
         // Queen promotions are best, but in edge cases knight promotions could also work.
         // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
-        if (move.IsPromotion) guess -= (int)move.PromotionPieceType;
-        if (move.IsCapture) guess -= (int)move.CapturePieceType - (int)move.MovePieceType + 5;
+        if (move.IsPromotion) guess -= 1_000_000 * (int)move.PromotionPieceType;
+        if (move.IsCapture) guess -= 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType;
 
         return guess;
     }
