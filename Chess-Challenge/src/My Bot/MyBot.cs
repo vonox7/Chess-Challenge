@@ -37,7 +37,7 @@ public class MyBot : IChessBot
     {
         board = _board;
         timer = _timer;
-        bestMove = Move.NullMove;
+        bestMove = default;
         cancel = false;
         var prevBestMove = bestMove;
         transpositionHit = 0; // #DEBUG
@@ -107,6 +107,7 @@ public class MyBot : IChessBot
         return guess;
     }
     
+    // TODO make this function an inner function of Think to save tokens (e.g. public vars like board)
     double minimax(int depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
     {
         // Check inside the search also for the timer to cancel a search if it took really too long
