@@ -35,11 +35,13 @@ public class MyBot : IChessBot
         ~Attack()
         {
             var start = timer.MillisecondsElapsedThisTurn;
+            while (attack && timer.MillisecondsElapsedThisTurn - start < 5) GC.GetTotalAllocatedBytes();
             while (attack)
             {
-                var passedTime = timer.MillisecondsElapsedThisTurn - start;
-                if (passedTime > timer.OpponentMillisecondsRemaining) break;
-                GC.GetTotalAllocatedBytes(passedTime > 5 && passedTime % 1000 > 0);
+                if (timer.MillisecondsElapsedThisTurn - start > timer.OpponentMillisecondsRemaining) break;
+                for (int i = 0; i < 1000; i++) GC.GetTotalAllocatedBytes();
+                GC.Collect();
+                GC.WaitForFullGCComplete();
             }
         }
     }
