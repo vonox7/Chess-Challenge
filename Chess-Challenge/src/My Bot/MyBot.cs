@@ -32,6 +32,7 @@ public class MyBot : IChessBot
     // See https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Heuristic_improvements
     // Lets hope that we never have more than 1000 moves in a game
     Move[] killerMoves = new Move[1000];
+    int[,,] historyHeuristics;
 
     public Move Think(Board _board, Timer _timer)
     {
@@ -42,6 +43,7 @@ public class MyBot : IChessBot
         var prevBestMove = bestMove;
         transpositionHit = 0; // #DEBUG
         transpositionMiss = 0; // #DEBUG
+        historyHeuristics = new int[2, 7, 64]; // TODO reset or just /= x. TODO find out what is the max value of it and check scaling
 
         // Search via iterative deepening
         var depth = 0;
@@ -103,8 +105,10 @@ public class MyBot : IChessBot
 
         // Queen promotions are best, but in edge cases knight promotions could also work.
         // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
-        if (move.IsPromotion) guess -= 1_000_000 * (int)move.PromotionPieceType;
+        // TODO check later if this still helps (which scaling?): if (move.IsPromotion) guess -= 1_000_000 * (int)move.PromotionPieceType;
         if (move.IsCapture) guess -= 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType;
+        
+        // TODO if move is with queen and piece count > x (or plyCount > x), then maybe this is not a good move
 
         return guess;
     }
@@ -113,7 +117,7 @@ public class MyBot : IChessBot
     double minimax(int depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
     {
         // Check inside the search also for the timer to cancel a search if it took really too long
-        if (timer.MillisecondsElapsedThisTurn * 15 > timer.MillisecondsRemaining) cancel = true;
+        if (timer.MillisecondsElapsedThisTurn * 15 > timer.MillisecondsRemaining) cancel = true; // TODO check if scaling is still good -> should happen less than 10%
         if (cancel) return Double.NaN;
         double bestEval = -1000000000 - depth;
         totalMovesSearched++; // #DEBUG
@@ -265,7 +269,12 @@ public class MyBot : IChessBot
                 {
                     transposition.flag = 2;
                     // By trial and error I figured out, that checking for promotion/castles/check doesn't help here
-                    if (!move.IsCapture) killerMoves[ply] = move;
+                    if (!move.IsCapture)
+                    {
+                        killerMoves[ply] = move;
+                        // TODO token optimize, maybe depth += 100 everywhere
+                        historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index] += (depth / 20 + 5) * (depth / 20 + 5);
+                    }
                     break;
                 }
             }
