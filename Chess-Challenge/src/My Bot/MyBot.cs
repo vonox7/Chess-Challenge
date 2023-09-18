@@ -3,8 +3,6 @@ using ChessChallenge.API;
 
 /*
 TODO eval: How often are pieces/pawns defended / how many pieces/pawns get defended by own pieces/pawns?
-TODO eval: Attacks on pieces/pawns near the king are more worth
-TODO search: https://www.chessprogramming.org/Delta_Pruning (safety margin)
 TODO: one bot-variation with GC attack
  */
 public class MyBot : IChessBot
@@ -272,8 +270,8 @@ public class MyBot : IChessBot
                     if (!move.IsCapture)
                     {
                         killerMoves[ply] = move;
-                        // TODO token optimize, maybe depth += 100 everywhere
-                        historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index] += (depth / 20 + 5) * (depth / 20 + 5);
+                        // Squaring depth doesn't change anything, so use the non-square-variation which has less tokens
+                        historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index] += depth + 100;
                     }
                     break;
                 }
