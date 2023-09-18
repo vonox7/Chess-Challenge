@@ -1,9 +1,11 @@
 # Chess Bot
 This is a chess bot implementation of the [Chess-Challenge project by SebLague](https://github.com/SebLague/Chess-Challenge).
 The goal of the competition is to create a small chess bot (in C#) using a provided chess framework.
+chess.com evaluates the performance of this bot while playing against itself with an 
+1250 ELO rating using 1 minute of thinking time per game and bot.
 
 ## Bot Brain Capacity
-Currently this chess bot uses 965/1024 C# code tokens. Due to the goal of token minimization, some of the code is not very readable (e.g. all functions & variables are inlined wherever possible).
+Currently this chess bot uses 1014/1024 C# code tokens. Due to the goal of token minimization, some of the code is not very readable (e.g. all functions & variables are inlined wherever possible).
 
 ## Search
 * Iterative deepening
@@ -22,6 +24,7 @@ Currently this chess bot uses 965/1024 C# code tokens. Due to the goal of token 
  * Promotions
  * Castles
  * Captures (MVV/LVA)
+ * History heuristics
 * Null move pruning (but not during endgames, there I figured out that NMP might skip a mate)
 * Single move optimization: If there is only one move, don't search
 * Search extension: When in check, search one ply deeper (with limit to avoid infinite recursion)
