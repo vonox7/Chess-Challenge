@@ -121,11 +121,17 @@ public class MyBot : IChessBot
             //////////////////////////////////////
             // End of inlined evaluate function //
             //////////////////////////////////////
+            // TODO check if we should incrementally update the eval (but not for endgame eval?). would probably only work if we get a +3 depth for it
 
 
+            // TODO cut earlier? how often does this happen? are we making a blunder if we cut here?
             if (depth <= -100) return eval; // Don't over-evaluate certain positions (this also avoids underflow of sbyte)
 
+            // TODO Figure out what PVS is and how to implement it
+            // TODO also check out Reverse futility pruning and Extended futility pruning
+
             // Null move pruning (but not in endgame, there we might skip a mate, e.g. on "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75"
+            // TODO which depth (*5)?
             if (depth >= 3 && allowNull && eval >= beta && whitePieceCount > 2 && blackPieceCount > 2 && board.TrySkipTurn())
             {
                 // depth - 15 is essentially skipping 3 depth-levels (due to depth - 5 in the other minimax call)
@@ -151,7 +157,7 @@ public class MyBot : IChessBot
                 alpha = Math.Max(alpha, bestEval);
             }
 
-            Span<Move> moves = stackalloc Move[256]; // TODO with or without NonAlloc?
+            Span<Move> moves = stackalloc Move[256];
             // On "r7/1b4B1/kp1r1PQP/p3bB2/P2p2R1/5qP1/2R4K/8 w - - 0 58" with depth=5 we make a blunder if we wouldn't test for check here
             board.GetLegalMovesNonAlloc(ref moves, depth <= 0 && !board.IsInCheck());
 
@@ -175,6 +181,8 @@ public class MyBot : IChessBot
                     (transposition.zobristKey == board.ZobristKey && move.RawValue == transposition.bestMoveRawValue ? 2_000_000_000 : 
                     // Capture moves
                     move.IsCapture ? 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType : 
+                    // Promotion move
+                    // TODO why doesn't this do anything? maybe because it is always a killer/history heuristic move? move.IsCapture ? 8_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType : 
                     // Killer moves
                     move == killerMoves[ply] ? 900_000 : 
                     // History heuristics: value is between 0 and 2M, avg between 1k-100k.
@@ -241,6 +249,7 @@ public class MyBot : IChessBot
         // Check here for the timer, so we don't start searching when we have almost time left.
         // TODO tweak value here and inside minimax, goal should be probably a 1% timeout rate to maximise winrate. or remove this check in total and rely on cancel inside minmax.
         // Max 25 depth, so we don't end up in a loop on forced checkmate. Also 5*25=125, and sbyte can hold up to 127.
+        // TODO dynamic alpha+beta window
         while (timer.MillisecondsElapsedThisTurn * 100 < timer.MillisecondsRemaining && depth < 25)
             // 1 depth is represented as 5*depth, so we can also do smaller depth-steps on critical positions
             if (Double.IsNaN(minimax(5 * ++depth, -1000000000.0, 1000000000.0, true))) break;
