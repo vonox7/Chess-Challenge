@@ -111,7 +111,7 @@ public class MyBot : IChessBot
                                                  Math.Abs(loosingKingSquare.File - winningKingSquare.File));
             }
 
-            // 40: Trade on equal material
+            // 40: Trade on equal material TODO is 40 a good value?
             var eval = 40 * score / (40 + whitePieceCount + blackPieceCount) * -whiteBoardMultiplier;
             //////////////////////////////////////
             // End of inlined evaluate function //
@@ -148,7 +148,7 @@ public class MyBot : IChessBot
 
             var ply = board.PlyCount;
 
-            Span<Move> moves = stackalloc Move[256];
+            Span<Move> moves = stackalloc Move[256]; // TODO with or without NonAlloc?
             // On "r7/1b4B1/kp1r1PQP/p3bB2/P2p2R1/5qP1/2R4K/8 w - - 0 58" with depth=5 we make a blunder if we wouldn't test for check here
             board.GetLegalMovesNonAlloc(ref moves, depth <= 0 && !board.IsInCheck());
 
@@ -166,20 +166,23 @@ public class MyBot : IChessBot
             Span<int> movePotential = stackalloc int[moves.Length];
             int moveIndex = 0;
             foreach (var move in moves)
-                movePotential[moveIndex++] = 
+                // I saved ~15 tokens by using those hard to read elvis statements
+                movePotential[moveIndex++] = -
                     // Check transposition table for previously good moves
-                    (transposition.zobristKey == board.ZobristKey && move.RawValue == transposition.bestMoveRawValue ? -100_000_000 : 0) -
-                    // History heuristics
-                    historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index] -
-                    (move == killerMoves[board.PlyCount] ? 900_000 : 0) -
-                    // Queen promotions are best, but in edge cases knight promotions could also work.
-                    // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
-                    // TODO check later if this still helps (which scaling?): (move.IsPromotion ? 1_000_000 * (int)move.PromotionPieceType : 0) -
-                    (move.IsCapture ? 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType : 0);
-
-            // TODO if move is with queen and piece count > x (or plyCount > x), then maybe this is not a good move:
-            // Make a statistic which material was moved on which plyCount/pieceCount, maybe we can do some heuristic about that
-
+                    (transposition.zobristKey == board.ZobristKey && move.RawValue == transposition.bestMoveRawValue ? 2_000_000_000 : 
+                    // Capture moves
+                    move.IsCapture ? 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType : 
+                    // Killer moves TODO 2 killer moves per ply (but ensure they are different?)
+                    move == killerMoves[board.PlyCount] ? 900_000 : 
+                    // History heuristics: value is between 0 and 2M, avg between 1k-100k.
+                    // So it can be bigger than killerMoves/captureMoves, but then this move seems really to be better.
+                    // TODO changing the scaling seems to makes a big difference, maybe we should scale historyHeuristics to its total sum (or max value)?
+                    historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index]);
+        
+            // Queen promotions are best, but in edge cases knight promotions could also work.
+            // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
+            // TODO check later if this still helps (which scaling?): (move.IsPromotion ? 1_000_000 * (int)move.PromotionPieceType : 0) -
+                
             movePotential.Sort(moves);
 
             foreach (var move in moves)
@@ -217,6 +220,7 @@ public class MyBot : IChessBot
                         {
                             killerMoves[ply] = move;
                             // Squaring depth doesn't change anything, so use the non-square-variation which has less tokens
+                            // TODO use movePieceType or startSquareIndex?
                             historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index] +=
                                 depth + 100;
                         }
