@@ -14,8 +14,6 @@ public class MyBot : IChessBot
 
     // 15MB * 16 bytes = 240MB, below the 256MB limit, checked via Marshal.SizeOf<Transposition>()
     Transposition[] transpositions = new Transposition[15_000_000];
-    int transpositionHit; // #DEBUG
-    int transpositionMiss; // #DEBUG
     private double[] prevEvals = new Double[1000]; // #DEBUG
 
     struct Transposition
@@ -38,8 +36,6 @@ public class MyBot : IChessBot
         double bestMoveEval = 0.0;
         var cancel = false;
         var prevBestMove = bestMove;
-        transpositionHit = 0; // #DEBUG
-        transpositionMiss = 0; // #DEBUG
         var historyHeuristics = new int[2, 7, 64]; // Resetting is fine, we get new values quite fast
 
         double minimax(int depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
@@ -169,33 +165,20 @@ public class MyBot : IChessBot
             // Optimize via ab-pruning: first check moves that are more likely to be good
             Span<int> movePotential = stackalloc int[moves.Length];
             int moveIndex = 0;
-            // TODO save tokens by making guess a single expression (see evaluation)
             foreach (var move in moves)
-            {
-                var guess = 0;
+                movePotential[moveIndex++] = 
+                    // Check transposition table for previously good moves
+                    (transposition.zobristKey == board.ZobristKey && move.RawValue == transposition.bestMoveRawValue ? -100_000_000 : 0) -
+                    // History heuristics
+                    historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index] -
+                    (move == killerMoves[board.PlyCount] ? 900_000 : 0) -
+                    // Queen promotions are best, but in edge cases knight promotions could also work.
+                    // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
+                    // TODO check later if this still helps (which scaling?): (move.IsPromotion ? 1_000_000 * (int)move.PromotionPieceType : 0) -
+                    (move.IsCapture ? 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType : 0);
 
-                // Check transposition table for previously good moves
-                if (transposition.zobristKey == board.ZobristKey)
-                {
-                    transpositionHit++; // #DEBUG 
-                    if (move.RawValue == transposition.bestMoveRawValue) guess -= 100_000_000;
-                }
-                else // #DEBUG 
-                    transpositionMiss++; // #DEBUG 
-
-                guess -= historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index];
-
-                if (move == killerMoves[board.PlyCount]) guess -= 900_000;
-
-                // Queen promotions are best, but in edge cases knight promotions could also work.
-                // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
-                // TODO check later if this still helps (which scaling?): if (move.IsPromotion) guess -= 1_000_000 * (int)move.PromotionPieceType;
-                if (move.IsCapture) guess -= 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType;
-
-                // TODO if move is with queen and piece count > x (or plyCount > x), then maybe this is not a good move
-
-                movePotential[moveIndex++] = guess;
-            }
+            // TODO if move is with queen and piece count > x (or plyCount > x), then maybe this is not a good move:
+            // Make a statistic which material was moved on which plyCount/pieceCount, maybe we can do some heuristic about that
 
             movePotential.Sort(moves);
 
@@ -273,12 +256,11 @@ public class MyBot : IChessBot
 
         bestMoveEval *= board.IsWhiteToMove ? 1 : -1; // #DEBUG
         Console.WriteLine( // #DEBUG
-            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, transpositionHits={4,4:F2}, searched={5:F2}M", // #DEBUG
+            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, searched={4:F2}M", // #DEBUG
             board.PlyCount / 2 + 1, // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 50 ? " (white wins)" : (bestMoveEval < -50 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
-            (double)transpositionHit / (transpositionHit + transpositionMiss), // #DEBUG
             totalMovesSearched / 1_000_000.0); // #DEBUG
 
         return bestMove;

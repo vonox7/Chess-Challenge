@@ -5,7 +5,7 @@ chess.com evaluates the performance of this bot while playing against itself wit
 1250 ELO rating using 1 minute of thinking time per game and bot.
 
 ## Bot Brain Capacity
-Currently this chess bot uses 958/1024 C# code tokens. Due to the goal of token minimization, some of the code is not very readable (e.g. all functions & variables are inlined wherever possible).
+Currently this chess bot uses 952/1024 C# code tokens. Due to the goal of token minimization, some of the code is not very readable (e.g. all functions & variables are inlined wherever possible).
 
 ## Search
 * Iterative deepening
