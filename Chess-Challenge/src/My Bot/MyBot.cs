@@ -35,14 +35,17 @@ public class MyBot : IChessBot
         Move bestMove = default;
         double bestMoveEval = 0.0;
         var cancel = false;
-        var prevBestMove = bestMove;
         var historyHeuristics = new int[2, 7, 64]; // Resetting is fine, we get new values quite fast
 
         double minimax(int depth, double alpha, double beta, bool assignBestMove, bool allowNull = true)
         {
             // Check inside the search also for the timer to cancel a search if it took really too long
-            if (timer.MillisecondsElapsedThisTurn * 15 > timer.MillisecondsRemaining)
-                cancel = true; // TODO check if scaling is still good -> should happen less than 10%
+            if (timer.MillisecondsElapsedThisTurn * 15 > timer.MillisecondsRemaining && !cancel)
+            { // #DEBUG
+                Console.WriteLine("Cancel"); // #DEBUG
+                cancel = true;
+            } // #DEBUG
+
             if (cancel) return Double.NaN;
             double bestEval = -1000000000 - depth;
             totalMovesSearched++; // #DEBUG
@@ -172,7 +175,7 @@ public class MyBot : IChessBot
                     (transposition.zobristKey == board.ZobristKey && move.RawValue == transposition.bestMoveRawValue ? 2_000_000_000 : 
                     // Capture moves
                     move.IsCapture ? 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType : 
-                    // Killer moves TODO 2 killer moves per ply (but ensure they are different?)
+                    // Killer moves
                     move == killerMoves[ply] ? 900_000 : 
                     // History heuristics: value is between 0 and 2M, avg between 1k-100k.
                     // So it can be bigger than killerMoves/captureMoves, but then this move seems really to be better.
@@ -206,10 +209,10 @@ public class MyBot : IChessBot
                     transposition.flag = 1;
 
                     if (assignBestMove)
-                    {
+                    { // #DEBUG
                         bestMove = move;
                         bestMoveEval = eval; // #DEBUG
-                    }
+                    } // #DEBUG
 
                     alpha = Math.Max(alpha, bestEval);
                     if (beta <= alpha)
@@ -235,16 +238,12 @@ public class MyBot : IChessBot
 
         // Search via iterative deepening
         var depth = 0;
-        // Check here for the timer, so we don't start searching when we have almost time left
+        // Check here for the timer, so we don't start searching when we have almost time left.
+        // TODO tweak value here and inside minimax, goal should be probably a 1% timeout rate to maximise winrate. or remove this check in total and rely on cancel inside minmax.
         // Max 25 depth, so we don't end up in a loop on forced checkmate. Also 5*25=125, and sbyte can hold up to 127.
         while (timer.MillisecondsElapsedThisTurn * 100 < timer.MillisecondsRemaining && depth < 25)
-        {
             // 1 depth is represented as 5*depth, so we can also do smaller depth-steps on critical positions
             if (Double.IsNaN(minimax(5 * ++depth, -1000000000.0, 1000000000.0, true))) break;
-            prevBestMove = bestMove;
-        }
-
-        if (cancel) bestMove = prevBestMove;
 
         prevEvals[board.PlyCount / 2] = bestMoveEval; // #DEBUG
         if (board.PlyCount > 20) // #DEBUG
