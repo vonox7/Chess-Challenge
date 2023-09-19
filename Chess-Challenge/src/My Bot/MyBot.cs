@@ -57,6 +57,8 @@ public class MyBot : IChessBot
                 if (transposition.flag == 1 && transposition.eval <= alpha) return alpha; // ALPHA
                 if (transposition.flag == 2 && transposition.eval >= beta) return beta; // BETA
             }
+            
+            var ply = board.PlyCount;
 
 
             ////////////////////////////////////////
@@ -93,7 +95,7 @@ public class MyBot : IChessBot
             var whiteBoardMultiplier = board.IsWhiteToMove ? -1 : 1;
 
             // Add/Subtract plyCount to prefer mate in fewer moves. Multiply by more than any e.g. pawn->queen promotion while taking opponent queen would bring
-            if (board.IsInCheckmate()) score += whiteBoardMultiplier * (100000000.0 - board.PlyCount * 10000);
+            if (board.IsInCheckmate()) score += whiteBoardMultiplier * (100000000.0 - ply * 10000);
 
             // Endgame evaluation: https://www.chessprogramming.org/Mop-up_Evaluation
             if (whitePieceCount < 2 || blackPieceCount < 2)
@@ -146,8 +148,6 @@ public class MyBot : IChessBot
                 alpha = Math.Max(alpha, bestEval);
             }
 
-            var ply = board.PlyCount;
-
             Span<Move> moves = stackalloc Move[256]; // TODO with or without NonAlloc?
             // On "r7/1b4B1/kp1r1PQP/p3bB2/P2p2R1/5qP1/2R4K/8 w - - 0 58" with depth=5 we make a blunder if we wouldn't test for check here
             board.GetLegalMovesNonAlloc(ref moves, depth <= 0 && !board.IsInCheck());
@@ -173,11 +173,11 @@ public class MyBot : IChessBot
                     // Capture moves
                     move.IsCapture ? 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType : 
                     // Killer moves TODO 2 killer moves per ply (but ensure they are different?)
-                    move == killerMoves[board.PlyCount] ? 900_000 : 
+                    move == killerMoves[ply] ? 900_000 : 
                     // History heuristics: value is between 0 and 2M, avg between 1k-100k.
                     // So it can be bigger than killerMoves/captureMoves, but then this move seems really to be better.
                     // TODO changing the scaling seems to makes a big difference, maybe we should scale historyHeuristics to its total sum (or max value)?
-                    historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index]);
+                    historyHeuristics[ply & 1, (int)move.MovePieceType, move.TargetSquare.Index]);
         
             // Queen promotions are best, but in edge cases knight promotions could also work.
             // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
@@ -219,9 +219,9 @@ public class MyBot : IChessBot
                         if (!move.IsCapture)
                         {
                             killerMoves[ply] = move;
-                            // Squaring depth doesn't change anything, so use the non-square-variation which has less tokens
-                            // TODO use movePieceType or startSquareIndex?
-                            historyHeuristics[board.PlyCount & 1, (int)move.MovePieceType, move.TargetSquare.Index] +=
+                            // Squaring depth doesn't change anything, so use the non-square-variation which has less tokens.
+                            // Changing movePieceType to startSquareIndex doesn't change anything, but this way we need less memory.
+                            historyHeuristics[ply & 1, (int)move.MovePieceType, move.TargetSquare.Index] +=
                                 depth + 100;
                         }
 
