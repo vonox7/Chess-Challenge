@@ -246,29 +246,21 @@ public class MyBot : IChessBot
         // Search via iterative deepening
         var depth = 1;
         // Check here for the timer, so we don't start searching when we have almost time left.
-        // TODO tweak value here and inside minimax, goal should be probably a 1% timeout rate to maximise winrate. or remove this check in total and rely on cancel inside minmax.
         // Max 25 depth, so we don't end up in a loop on forced checkmate. Also 5*25=125, and sbyte can hold up to 127.
-        // Aspiration window (dynamic alpha+beta window) TODO token improve
-        var alpha = -1000000000.0; // TODO log how often we widen the window (ratio). try also using prev alpha/beta (so make variables global), eval shouldn't have changed
+        // Aspiration window (dynamic alpha+beta window)
+        var alpha = -1000000000.0;
         var beta = 1000000000.0;
+        // TODO tweak time value here and inside minimax, goal should be probably a 1% timeout rate to maximise winrate. or remove this check in total and rely on cancel inside minmax.
         while (timer.MillisecondsElapsedThisTurn * 100 < timer.MillisecondsRemaining && depth < 25)
         {
             var newEval = minimax(5 * depth, alpha, beta, true);
 
             if (newEval <= alpha)
-            {
-                Console.WriteLine("Widen window (alpha): " + alpha + ", depth=" + depth); // #DEBUG
                 alpha = -1000000000.0;
-            }
             else if (newEval >= beta)
-            {
-                Console.WriteLine("Widen window (beta): " + beta + ", depth=" + depth); // #DEBUG
                 beta = 1000000000.0;
-            }
             else
             {
-                // TODO maybe 25-50 (according to some online blogs) is a better value here?
-                // 45: -15 +-37
                 alpha = newEval - 55;
                 beta = newEval + 55;
                 depth++;
