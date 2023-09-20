@@ -47,7 +47,7 @@ public class MyBot : IChessBot
             } // #DEBUG
 
             if (cancel) return Double.NaN;
-            double bestEval = -1000000000 - depth;
+            double bestEval = -100000000 - depth;
             totalMovesSearched++; // #DEBUG
 
             if (board.IsDraw()) return 0;
@@ -116,12 +116,11 @@ public class MyBot : IChessBot
                                                  Math.Abs(loosingKingSquare.File - winningKingSquare.File));
             }
 
-            // 40: Trade on equal material TODO is 40 a good value?
-            var eval = 40 * score / (40 + whitePieceCount + blackPieceCount) * -whiteBoardMultiplier;
+            // TODO test this: var eval = 40 * score / (40 + whitePieceCount + blackPieceCount) * -whiteBoardMultiplier; (40: Trade on equal material TODO is 40 a good value?)
+            var eval = score * -whiteBoardMultiplier;
             //////////////////////////////////////
             // End of inlined evaluate function //
             //////////////////////////////////////
-            // TODO check if we should incrementally update the eval (but not for endgame eval?). would probably only work if we get a +3 depth for it
 
 
             // TODO cut earlier? how often does this happen? are we making a blunder if we cut here?
@@ -245,14 +244,40 @@ public class MyBot : IChessBot
         }
 
         // Search via iterative deepening
-        var depth = 0;
+        var depth = 1;
         // Check here for the timer, so we don't start searching when we have almost time left.
         // TODO tweak value here and inside minimax, goal should be probably a 1% timeout rate to maximise winrate. or remove this check in total and rely on cancel inside minmax.
         // Max 25 depth, so we don't end up in a loop on forced checkmate. Also 5*25=125, and sbyte can hold up to 127.
-        // TODO dynamic alpha+beta window
+        // Aspiration window (dynamic alpha+beta window) TODO token improve
+        var alpha = -1000000000.0;
+        var beta = 1000000000.0;
+        var widenCount = 1;
         while (timer.MillisecondsElapsedThisTurn * 100 < timer.MillisecondsRemaining && depth < 25)
+        {
+            var newEval = minimax(5 * depth, alpha, beta, true);
+
+            if (newEval <= alpha)
+            {
+                Console.WriteLine("Widen window (alpha): " + alpha + ", depth=" + depth); // #DEBUG
+                alpha = -1000000000.0;
+                widenCount++;
+            }
+            else if (newEval >= beta)
+            {
+                Console.WriteLine("Widen window (beta): " + beta + ", depth=" + depth); // #DEBUG
+                beta = 1000000000.0;
+                widenCount++;
+            }
+            else
+            {
+                alpha = newEval - 50 * widenCount;
+                beta = newEval + 50 * widenCount;
+                depth++;
+            }
+
             // 1 depth is represented as 5*depth, so we can also do smaller depth-steps on critical positions
-            if (Double.IsNaN(minimax(5 * ++depth, -1000000000.0, 1000000000.0, true))) break;
+            if (Double.IsNaN(newEval)) break;
+        }
 
         prevEvals[board.PlyCount / 2] = bestMoveEval; // #DEBUG
         if (board.PlyCount > 20) // #DEBUG
