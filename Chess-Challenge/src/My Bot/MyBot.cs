@@ -127,7 +127,7 @@ public class MyBot : IChessBot
 
             // Null move pruning (but not in endgame, there we might skip a mate, e.g. on "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75"
             // TODO which depth (*5)?
-            if (depth >= 3 && allowNull && eval >= beta && whitePieceCount > 2 && blackPieceCount > 2 && board.TrySkipTurn())
+            if (depth >= 5 && allowNull && eval >= beta && whitePieceCount > 2 && blackPieceCount > 2 && board.TrySkipTurn())
             {
                 // depth - 15 is essentially skipping 3 depth-levels (due to depth - 5 in the other minimax call)
                 double nullMoveEval = -minimax(depth - 15, -beta, -beta + 1, false, false);
@@ -193,7 +193,7 @@ public class MyBot : IChessBot
             {
                 board.MakeMove(move);
                 // Extension: Getting a check is quite often so unstable, that we need to check 1 more move deep (but not forever, so otherwise reduce by 0.2)
-                eval = -minimax(depth - (board.IsInCheck() ? 1 : 5), -beta, -alpha, false);
+                eval = -minimax(depth - (board.IsInCheck() ? 1 : 5), -beta, -alpha, false); // TODO: allowNull param = allowNull? or make it an int instead of bool and pass ply/depth, so to not allowNull on next 1-3 moves.
                 board.UndoMove(move);
                 if (cancel) return Double.NaN;
                 alpha = Math.Max(alpha, eval);
