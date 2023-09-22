@@ -2,7 +2,6 @@
 using ChessChallenge.API;
 
 /*
-TODO eval: How often are pieces/pawns defended / how many pieces/pawns get defended by own pieces/pawns?
 TODO: one bot-variation with GC attack
 TODO: penalty for wins that are far in the future?
  */
@@ -116,17 +115,14 @@ public class MyBot : IChessBot
                                                  Math.Abs(loosingKingSquare.File - winningKingSquare.File));
             }
 
-            // TODO test this: var eval = 40 * score / (40 + whitePieceCount + blackPieceCount) * -whiteBoardMultiplier; (40: Trade on equal material TODO is 40 a good value?)
             var eval = score * -whiteBoardMultiplier;
             //////////////////////////////////////
             // End of inlined evaluate function //
             //////////////////////////////////////
 
 
-            // TODO cut earlier? how often does this happen? are we making a blunder if we cut here?
             if (depth <= -100) return eval; // Don't over-evaluate certain positions (this also avoids underflow of sbyte)
 
-            // TODO Figure out what PVS is and how to implement it
             // TODO also check out Reverse futility pruning and Extended futility pruning
 
             // Null move pruning (but not in endgame, there we might skip a mate, e.g. on "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75"
@@ -180,8 +176,6 @@ public class MyBot : IChessBot
                     (transposition.zobristKey == board.ZobristKey && move.RawValue == transposition.bestMoveRawValue ? 2_000_000_000 : 
                     // Capture moves
                     move.IsCapture ? 1_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType : 
-                    // Promotion move
-                    // TODO why doesn't this do anything? maybe because it is always a killer/history heuristic move? move.IsCapture ? 8_000_000 * (int)move.CapturePieceType - (int)move.MovePieceType : 
                     // Killer moves
                     move == killerMoves[ply] ? 900_000 : 
                     // History heuristics: value is between 0 and 2M, avg between 1k-100k.
@@ -250,7 +244,6 @@ public class MyBot : IChessBot
         // Aspiration window (dynamic alpha+beta window)
         var alpha = -1000000000.0;
         var beta = 1000000000.0;
-        // TODO tweak time value here and inside minimax, goal should be probably a 1% timeout rate to maximise winrate. or remove this check in total and rely on cancel inside minmax.
         while (timer.MillisecondsElapsedThisTurn * 100 < timer.MillisecondsRemaining && depth < 25)
         {
             var newEval = minimax(5 * depth, alpha, beta, true);
