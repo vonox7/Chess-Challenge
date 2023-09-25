@@ -5,7 +5,7 @@ chess.com evaluates the performance of this bot while playing against itself wit
 1250 ELO rating using 1 minute of thinking time per game and bot.
 
 ## Bot Brain Capacity
-Currently this chess bot uses 959/1024 C# code tokens. Due to the goal of token minimization, some of the code is not very readable (e.g. all functions & variables are inlined wherever possible).
+Currently this chess bot uses 946/1024 C# code tokens. Due to the goal of token minimization, some of the code is not very readable (e.g. all functions & variables are inlined wherever possible).
 
 ## Search
 * Iterative deepening
@@ -31,7 +31,9 @@ Currently this chess bot uses 959/1024 C# code tokens. Due to the goal of token 
 * Search extension: When in check, search one ply deeper (with limit to avoid infinite recursion)
 
 ## Evaluation
-I decided to write a custom evaluation function to not use the [quite common approach in the competition](https://github.com/SebLague/Chess-Challenge/forks) which uses compressed presto tables.
+I decided to do a novel approach and write a custom evaluation function to not use the [quite common approach in the competition](https://github.com/SebLague/Chess-Challenge/forks) which uses compressed pesto tables.
+However, by using a [well written presto table](https://github.com/Tyrant7/Chess-Challenge/blob/main/Chess-Challenge/src/My%20Bot/MyBot.cs), the bot could gain ~250 ELO, while keeping the same amount of code tokens.
+
 The evaluation function is based on the following features:
  * Pawn/piece values
  * Pawn position: 1 centipawn per square moved forward

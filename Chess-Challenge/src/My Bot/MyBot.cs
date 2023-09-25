@@ -1,9 +1,10 @@
 ﻿using System;
 using ChessChallenge.API;
+using static System.Double;
+using static System.Math;
 
 /*
 TODO: one bot-variation with GC attack
-TODO: penalty for wins that are far in the future?
  */
 
 // Note that I avoid using functions and inline everything to save code tokens, which is a goal of the challenge.
@@ -45,7 +46,7 @@ public class MyBot : IChessBot
                 cancel = true;
             } // #DEBUG
 
-            if (cancel) return Double.NaN;
+            if (cancel) return NaN;
             double bestEval = -100000000 - depth;
             totalMovesSearched++; // #DEBUG
 
@@ -72,7 +73,6 @@ public class MyBot : IChessBot
 
             // Midgame evaluation (but also needed for endgame to find actual mate)
             foreach (var pieceList in board.GetAllPieceLists())
-            {
                 for (int pieceIndex = 0; pieceIndex < pieceList.Count; pieceIndex++)
                 {
                     var piece = pieceList[pieceIndex];
@@ -91,7 +91,6 @@ public class MyBot : IChessBot
                               1.5 * BitboardHelper.GetNumberOfSetBits(attacks & board.AllPiecesBitboard))
                              * (pieceList.IsWhitePieceList ? 1 : -1);
                 }
-            }
 
             // Checkmate is of course always best. But a checkmate with a queen-promotion is considered best (because we might have overlooked an escape route that might have been possible with a rook-promotion)
             var whiteBoardMultiplier = board.IsWhiteToMove ? -1 : 1;
@@ -108,11 +107,11 @@ public class MyBot : IChessBot
                 var winningKingSquare = board.GetKingSquare(!whiteIsLoosing);
 
                 var centerDistanceOfLoosingKing =
-                    Math.Abs(loosingKingSquare.Rank - 3.5) + Math.Abs(loosingKingSquare.File - 3.5);
+                    Abs(loosingKingSquare.Rank - 3.5) + Abs(loosingKingSquare.File - 3.5);
                 // Scaling factor is trimmed to not make blunders in "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75" or "8/1K6/6p1/5k2/R3n3/8/8/8 w - - 4 86"
                 score += whiteBoardMultiplier * (3 * centerDistanceOfLoosingKing + 14 -
-                                                 Math.Abs(loosingKingSquare.Rank - winningKingSquare.Rank) +
-                                                 Math.Abs(loosingKingSquare.File - winningKingSquare.File));
+                                                 Abs(loosingKingSquare.Rank - winningKingSquare.Rank) +
+                                                 Abs(loosingKingSquare.File - winningKingSquare.File));
             }
 
             var eval = score * -whiteBoardMultiplier;
@@ -123,10 +122,7 @@ public class MyBot : IChessBot
 
             if (depth <= -100) return eval; // Don't over-evaluate certain positions (this also avoids underflow of sbyte)
 
-            // TODO also check out Reverse futility pruning and Extended futility pruning
-
             // Null move pruning (but not in endgame, there we might skip a mate, e.g. on "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75"
-            // TODO which depth (*5)?
             if (depth >= 5 && allowNull && eval >= beta && whitePieceCount > 2 && blackPieceCount > 2 && board.TrySkipTurn())
             {
                 // depth - 15 is essentially skipping 3 depth-levels (due to depth - 5 in the other minimax call)
@@ -149,7 +145,7 @@ public class MyBot : IChessBot
                     return bestEval; // eval seems to be quiet, so stop here
                 }
 
-                alpha = Math.Max(alpha, bestEval);
+                alpha = Max(alpha, bestEval);
             }
 
             Span<Move> moves = stackalloc Move[256];
@@ -162,8 +158,8 @@ public class MyBot : IChessBot
             if (moves.Length == 1 && assignBestMove)
             {
                 bestMove = moves[0];
-                bestMoveEval = Double.NaN; // #DEBUG
-                return Double.NaN;
+                bestMoveEval = NaN; // #DEBUG
+                return NaN;
             }
 
             // Optimize via ab-pruning: first check moves that are more likely to be good
@@ -180,23 +176,18 @@ public class MyBot : IChessBot
                     move == killerMoves[ply] ? 900_000 : 
                     // History heuristics: value is between 0 and 2M, avg between 1k-100k.
                     // So it can be bigger than killerMoves/captureMoves, but then this move seems really to be better.
-                    // TODO changing the scaling seems to makes a big difference, maybe we should scale historyHeuristics to its total sum (or max value)?
                     historyHeuristics[ply & 1, (int)move.MovePieceType, move.TargetSquare.Index]);
         
-            // Queen promotions are best, but in edge cases knight promotions could also work.
-            // But check also other promotions, as queen promotion might even lead to a stalemate (e.g. on 8/1Q4P1/3k4/8/3P2K1/P7/7P/8 w - - 3 53)
-            // TODO check later if this still helps (which scaling?): (move.IsPromotion ? 1_000_000 * (int)move.PromotionPieceType : 0) -
-                
             movePotential.Sort(moves);
 
             foreach (var move in moves)
             {
                 board.MakeMove(move);
                 // Extension: Getting a check is quite often so unstable, that we need to check 1 more move deep (but not forever, so otherwise reduce by 0.2)
-                eval = -minimax(depth - (board.IsInCheck() ? 1 : 5), -beta, -alpha, false); // TODO: allowNull param = allowNull? or make it an int instead of bool and pass ply/depth, so to not allowNull on next 1-3 moves.
+                eval = -minimax(depth - (board.IsInCheck() ? 1 : 5), -beta, -alpha, false);
                 board.UndoMove(move);
-                if (cancel) return Double.NaN;
-                alpha = Math.Max(alpha, eval);
+                if (cancel) return NaN;
+                alpha = Max(alpha, eval);
 
                 if (eval > bestEval)
                 {
@@ -215,7 +206,7 @@ public class MyBot : IChessBot
                         bestMoveEval = eval; // #DEBUG
                     } // #DEBUG
 
-                    alpha = Math.Max(alpha, bestEval);
+                    alpha = Max(alpha, bestEval);
                     if (beta <= alpha)
                     {
                         transposition.flag = 2;
@@ -225,8 +216,7 @@ public class MyBot : IChessBot
                             killerMoves[ply] = move;
                             // Squaring depth doesn't change anything, so use the non-square-variation which has less tokens.
                             // Changing movePieceType to startSquareIndex doesn't change anything, but this way we need less memory.
-                            historyHeuristics[ply & 1, (int)move.MovePieceType, move.TargetSquare.Index] +=
-                                depth + 100;
+                            historyHeuristics[ply & 1, (int)move.MovePieceType, move.TargetSquare.Index] += depth + 100;
                         }
 
                         break;
@@ -260,14 +250,14 @@ public class MyBot : IChessBot
             }
 
             // 1 depth is represented as 5*depth, so we can also do smaller depth-steps on critical positions
-            if (Double.IsNaN(newEval)) break;
+            if (IsNaN(newEval)) break;
         }
 
         prevEvals[board.PlyCount / 2] = bestMoveEval; // #DEBUG
         if (board.PlyCount > 20) // #DEBUG
         { // #DEBUG
             var prevEval = prevEvals[board.PlyCount / 2 - 5]; // #DEBUG
-            if (!Double.IsNaN(prevEval) && !Double.IsNaN(bestMoveEval) && // #DEBUG
+            if (!IsNaN(prevEval) && !IsNaN(bestMoveEval) && // #DEBUG
                 (prevEval - bestMoveEval) * (board.IsWhiteToMove ? 1 : -1) > 1000 && // #DEBUG
                 ((prevEval < 10 && bestMoveEval > -10) || (prevEval > -10 && bestMoveEval < 10))) // #DEBUG
             { // #DEBUG
