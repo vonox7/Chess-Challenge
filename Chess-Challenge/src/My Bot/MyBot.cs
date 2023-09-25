@@ -1,4 +1,4 @@
-﻿#define ELECTRIC_SHOCKWAVE_GAMBIT
+﻿//#define ELECTRIC_SHOCKWAVE_GAMBIT
 
 using System;
 using ChessChallenge.API;
