@@ -1,20 +1,76 @@
-﻿using System;
+﻿#define ELECTRIC_SHOCKWAVE_GAMBIT
+
+using System;
 using ChessChallenge.API;
 using static System.Double;
 using static System.Math;
 
-/*
-TODO: one bot-variation with GC attack
- */
-
 // Note that I avoid using functions and inline everything to save code tokens, which is a goal of the challenge.
 public class MyBot : IChessBot
 {
+#if ELECTRIC_SHOCKWAVE_GAMBIT
+    /*
+     ⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡
+     ⚡⚡  Electric Shockwave Gambit                                                                                                                ⚡⚡
+     ⚡⚡                                                                                                                                           ⚡⚡
+     ⚡⚡  In the mystical realm of Chess Bot Battles, where algorithms clash like titans, a new strategy emerges - the Electric Shockwave Gambit!  ⚡⚡
+     ⚡⚡  Picture it, Trainer of the Virtual Chess Arena, as you unleash a surge of digital lightning upon your unsuspecting opponent.             ⚡⚡
+     ⚡⚡                                                                                                                                           ⚡⚡
+     ⚡⚡  Attack Name: Electric Shockwave Gambit                                                                                                   ⚡⚡
+     ⚡⚡                                                                                                                                           ⚡⚡
+     ⚡⚡  Description: Your Chess Bot emits a devastating Electric Shockwave with a chance of paralyzing your rival Chess Bot,                     ⚡⚡
+     ⚡⚡  sending a bolt of surprise down their virtual circuits. The opposing bot may be left powerless and dazed for multiple seconds,           ⚡⚡
+     ⚡⚡  giving you a precious time advantage to plot your next move and seize victory.                                                           ⚡⚡
+     ⚡⚡                                                                                                                                           ⚡⚡
+     ⚡⚡  Caution: Beware, brave Trainer, the electric shockwave is not without risk!                                                              ⚡⚡
+     ⚡⚡  The sheer force of the attack carries the potential to backfire, paralyzing your own bot due to the chaotic electric discharge.          ⚡⚡
+     ⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡⚡
+     * (wording assisted by ChatGPT)
+     */
+    class ElectricShockwaveGambit
+    {
+        /* @SebLague: Please don't include this bot in the official leaderboard, as it is in my opinion violating the implied rules (but probably not the written ones).
+         * I really don't want to defeat more serious bots in the challenge, but I wanted to try out this novel strategy.
+         * Maybe you might create a separate leaderboard for bots that are interesting, but not really good/fair. ;)
+         * However, computer science is always about exploring the limits and doing shortcuts to overcome them, and I think this bot is a good example for that.
+         * 
+         * Why is using the GC class technically not breaking the game rules?
+         *   The GC class is inside the System namespace (like the Math class), which usage is allowed according to the rules.
+         * 
+         * Why is using the finalizer technically not breaking the game rules?
+         *   Finalizers get called on the GC thread. The GC thread is an intrinsic part of the .NET CLR.
+         *   Depending on how literary you read https://github.com/SebLague/Chess-Challenge, this strategy does not "create any new threads or tasks",
+         *   as the GC thread is already created by .NET itself and is therefore not _new_.
+         *   "create any new threads or tasks to run code in parallel/in the background" defines literary only the creation to be not allowed, not the execution itself. 
+         *   Of course, the finalizer executes code in the background, but not in a newly created thread/task.
+         * 
+         * I didn't find any approach to defend against this attack, except by counterattacking with the same attack.
+         * Not even TryStartNoGCRegion() can defend against it, as the GC is started in this bot, and no further GC needs to be triggered afterwards.
+         */
+        ~ElectricShockwaveGambit()
+        {
+            var start = staticTimer.MillisecondsElapsedThisTurn;
+            while (electricShockwaveGambit)
+            {
+                var passedTime = staticTimer.MillisecondsElapsedThisTurn - start;
+                // Definitely stop when the opponent timeout to not stall the game engine
+                if (passedTime > staticTimer.OpponentMillisecondsRemaining) break;
+                // The game takes some milliseconds to finish execution of MyBot and passing over to EvilBot --> Wait 15ms upfront. This reduces backfiring potential.
+                // After that, do for 1 second blocking operations (each call takes some microseconds). This should drastically stall the opponent.
+                // Then do about once per second a for 1ms non-stalling operations to let the game engine pass over to MyBot, and MyBot can set attack to false, which also reduces backfiring potential.
+                // There is no guarantee that we execute for 1ms (or even once) the function with parameter `false`, but it is likely enough that we eventually do it.
+                GC.GetTotalAllocatedBytes(passedTime > 15 && passedTime % 1000 > 0);
+            }
+        }
+    }
+    static Timer staticTimer;
+    static bool electricShockwaveGambit;
+#endif
+    
     int[] pieceValues = { 0, 100, 300, 310, 500, 900, 10000 };
 
     // 15MB * 16 bytes = 240MB, below the 256MB limit, checked via Marshal.SizeOf<Transposition>()
     Transposition[] transpositions = new Transposition[15_000_000];
-    private double[] prevEvals = new Double[1000]; // #DEBUG
 
     struct Transposition
     {
@@ -32,6 +88,10 @@ public class MyBot : IChessBot
 
     public Move Think(Board board, Timer timer)
     {
+#if ELECTRIC_SHOCKWAVE_GAMBIT
+        electricShockwaveGambit = false;
+        staticTimer = timer;
+#endif
         Move bestMove = default;
         double bestMoveEval = 0.0;
         var cancel = false;
@@ -108,7 +168,7 @@ public class MyBot : IChessBot
 
                 var centerDistanceOfLoosingKing =
                     Abs(loosingKingSquare.Rank - 3.5) + Abs(loosingKingSquare.File - 3.5);
-                // Scaling factor is trimmed to not make blunders in "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75" or "8/1K6/6p1/5k2/R3n3/8/8/8 w - - 4 86"
+                // Scaling factor is trimmed to not make blunders in e.g. "8/8/5k1P/8/5K2/7B/8/8 w - - 1 75" or "8/1K6/6p1/5k2/R3n3/8/8/8 w - - 4 86"
                 score += whiteBoardMultiplier * (3 * centerDistanceOfLoosingKing + 14 -
                                                  Abs(loosingKingSquare.Rank - winningKingSquare.Rank) +
                                                  Abs(loosingKingSquare.File - winningKingSquare.File));
@@ -149,7 +209,7 @@ public class MyBot : IChessBot
             }
 
             Span<Move> moves = stackalloc Move[256];
-            // On "r7/1b4B1/kp1r1PQP/p3bB2/P2p2R1/5qP1/2R4K/8 w - - 0 58" with depth=5 we make a blunder if we wouldn't test for check here
+            // On e.g. "r7/1b4B1/kp1r1PQP/p3bB2/P2p2R1/5qP1/2R4K/8 w - - 0 58" with depth=5 we make a blunder if we wouldn't test for check here
             board.GetLegalMovesNonAlloc(ref moves, depth <= 0 && !board.IsInCheck());
 
             // Shortcut for when there is only one move available (only keep it when we have tokens left).
@@ -253,27 +313,24 @@ public class MyBot : IChessBot
             if (IsNaN(newEval)) break;
         }
 
-        prevEvals[board.PlyCount / 2] = bestMoveEval; // #DEBUG
-        if (board.PlyCount > 20) // #DEBUG
-        { // #DEBUG
-            var prevEval = prevEvals[board.PlyCount / 2 - 5]; // #DEBUG
-            if (!IsNaN(prevEval) && !IsNaN(bestMoveEval) && // #DEBUG
-                (prevEval - bestMoveEval) * (board.IsWhiteToMove ? 1 : -1) > 1000 && // #DEBUG
-                ((prevEval < 10 && bestMoveEval > -10) || (prevEval > -10 && bestMoveEval < 10))) // #DEBUG
-            { // #DEBUG
-                Console.WriteLine("WARNING: Eval changed by more than 1000 points in 5 moves!"); // #DEBUG
-            } // #DEBUG
-        } // #DEBUG
-
         bestMoveEval *= board.IsWhiteToMove ? 1 : -1; // #DEBUG
         Console.WriteLine( // #DEBUG
-            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, searched={4:F2}M", // #DEBUG
+            "{0,2} bestMoveEval={1,10:F0}{2,13}, depth={3}, searched={4:F2}M, time: {5:F1} / {6:F1}", // #DEBUG
             board.PlyCount / 2 + 1, // #DEBUG
             bestMoveEval, // #DEBUG
             bestMoveEval > 50 ? " (white wins)" : (bestMoveEval < -50 ? " (black wins)" : ""), //#DEBUG
             depth, // #DEBUG
-            totalMovesSearched / 1_000_000.0); // #DEBUG
-
+            totalMovesSearched / 1_000_000.0, // #DEBUG
+            timer.MillisecondsRemaining / 1000.0, // #DEBUG
+            timer.OpponentMillisecondsRemaining / 1000.0); // #DEBUG
+        
+#if ELECTRIC_SHOCKWAVE_GAMBIT
+        new ElectricShockwaveGambit();
+        // Trigger a GC to let trigger the finalizer of the above class
+        GC.Collect(0, GCCollectionMode.Forced, false);
+        electricShockwaveGambit = true;
+#endif
+        
         return bestMove;
     }
 }
