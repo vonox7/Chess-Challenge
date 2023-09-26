@@ -36,8 +36,6 @@ However, I personally would argue that this variation is not in the spirit of th
 * Move ordering heuristic
  * Best move from transposition table
  * Killer moves
- * Promotions
- * Castles
  * Captures (MVV/LVA)
  * History heuristics
 * Null move pruning (but not during endgames, there I figured out that NMP might skip a mate)
