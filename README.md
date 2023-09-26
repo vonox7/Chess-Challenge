@@ -9,11 +9,15 @@ Currently this chess bot uses 946/1024 C# code tokens. Due to the goal of token 
 
 ## Variation with "Electric Shockwave Gambit" Joke Attack
 I created a variation of the bot which defeats (at least on my machine) all bots in the competition that are publicly available and well known to be excellent.
+
 With a 60s time limit, this variation easily defeats the [extremely optimized bot by Tyrant7](https://github.com/Tyrant7/Chess-Challenge) with 10:0:0.
 Depending on how the tournament framework will be used (each bot in one process or two bots share one process), this variation might therefore be either on the top or on the bottom of the leaderboard.
+
 Read [the explanation](https://github.com/vonox7/Chess-Challenge/blob/main/Chess-Challenge/src/My%20Bot/MyBot.cs#L13) for more details about this approach.
-This variation uses 1019/1024 C# code tokens. Due to the behaviour, no real ELO rating can be calculated.
 Activate this bot variation by uncommenting `//#define ELECTRIC_SHOCKWAVE_GAMBIT`.
+
+This variation uses 1019/1024 C# code tokens. Due to the behaviour, no real ELO rating can be calculated.
+
 If you take the competition rules literally, this variation most probably does not cheat.
 However, I personally would argue that this variation is not in the spirit of the competition and ask therefore the competition host to excluded this variation in the official leaderboard.
 
