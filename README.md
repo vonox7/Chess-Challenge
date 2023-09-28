@@ -54,6 +54,7 @@ The evaluation function is based on the following features:
  * Pawn/piece defense: 1.5 centipawns per defended own pawn/piece
  * Checkmate: Prefer checkmates in fewer moves
  * Endgame evaluation: When one side only has 1 king left, a mop-up evaluation with center manhattan-distance is added to force the king in a queen/rook endgame to the side.
+
 This leads to the emergent behaviour of:
  * Reasonable pawn structure, as pawns want to defend themselves
  * Opening: (almost) reasonable piece development, as pieces want to "see" the board
