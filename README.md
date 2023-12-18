@@ -1,8 +1,7 @@
 # Chess Bot
 This is a chess bot implementation of the [Chess-Challenge project by SebLague](https://github.com/SebLague/Chess-Challenge).
 The goal of the competition is to create a small chess bot (in C#) using a provided chess framework.
-chess.com evaluates the performance of this bot while playing against itself with an 
-1250 ELO rating using 1 minute of thinking time per game and bot.
+This bot secured the [57th position out of 624 participants](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Swiss/Results.txt#L57) in the official tournament. Its estimated skill level is around 1250 ELO on chess.com.
 
 ## Bot Brain Capacity
 Currently this chess bot uses 946/1024 C# code tokens. Due to the goal of token minimization, some of the code is not very readable (e.g. all functions & variables are inlined wherever possible).
